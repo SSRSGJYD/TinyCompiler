@@ -104,11 +104,11 @@ if                    { return numToken(T_IF); }
 else                  { return numToken(T_ELSE); }
 for                   { return numToken(T_FOR); }
 while                 { return numToken(T_WHILE); }
-break                 { return numToken(T_BREAK); }
+ //break                 { return numToken(T_BREAK); }
 return                { return numToken(T_RETURN); }
 
  // io function
-printf                { return numToken(T_PRINTF); }
+ //printf                { return numToken(T_PRINTF); }
 
  // comparison operators
 =                     { return numToken(T_EQUAL); }
@@ -134,17 +134,25 @@ printf                { return numToken(T_PRINTF); }
  // math operators
 [+]                     { return numToken(T_PLUS); }
 [-]                     { return numToken(T_MINUS); }
-[/]                     { return numToken(T_DIV); }
+[\/]                     { return numToken(T_DIV); }
 [*]                     { return numToken(T_MUL); }
-[%]                     { return numToken(T_REM); }
+[%]                     { return numToken(T_REMAIN); }
+
+ //unary operator
+[!]                     { return numToken(T_NOT); }
+[+][+]                  { return numToken(T_INC); }
+[-][-]                  { return numToken(T_DEC); }
+
+ // bit operator
+[|]		                { return numToken(T_OR); }
+[\^]		            { return numToken(T_XOR); }
+[&]		                { return numToken(T_AND); }
 
  // terminators & delimiters
 [;]                     { return numToken(T_SEMI); }
 [,]                     { return numToken(T_COMMA); }
 
  // others
-[?]                     { return numToken(T_QUESTION); }
-[:]                     { return numToken(T_COLON); }
 [.]                     { return numToken(T_DOT); }
 [-][>]                  { return numToken(T_ARROW); }
 

@@ -1,11 +1,8 @@
 %code requires{
 
 #include "ast.h"
-extern ast_Top *g_root; // A way of getting the AST out
+extern ASTVector *g_root; // A way of getting the AST out
 
-//! This is to fix problems when generating C++
-// We are declaring the functions provided by Flex, so
-// that Bison generated code can call them.
 int yylex(void);
 void yyerror(const char *);
 
@@ -22,29 +19,38 @@ void yyerror(const char *);
                         
 %token T_TYPE_SPEC T_IDENTIFIER
 %token T_SEMI T_COMMA T_LPAREN T_LBRACE T_RBRACE T_LBRACKET T_RBRACKET 
-%token T_QUESTION T_COLON 
-%token T_LOG_OR T_LOG_AND T_OR T_XOR T_AND 
-%token T_MUL T_DIV T_REM  T_NOT T_DOT T_ARROW T_INCDEC T_ADDSUB_OP T_ASSIGN_OPER T_EQUAL
+%token T_LOGIC_OR T_LOGIC_AND T_OR T_XOR T_AND T_NOT
+%token T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
+%token T_MUL T_DIV T_REMAIN T_ADD T_SUB T_INC T_DEC
+%token T_DOT T_ARROW
 %token T_INT_CONST T_FLOAT_CONST
 %token T_IF T_WHILE T_FOR T_RETURN
 %nonassoc T_RPAREN
 %nonassoc T_ELSE
-			
-                        
-%type <statement> ExtDef ExtDeclaration
-			
-%type <statement> FuncDef ParameterList Parameter ParamDeclarator
-			
-%type <statement> DeclarationList Declaration DeclarationSpec DeclarationSpec_T InitDeclarator InitDeclaratorList Declarator
-			
-%type <statement> StatementList Statement CompoundStatement CompoundStatement_2 SelectionStatement ExpressionStatement JumpStatement IterationStatement
-			
-%type <statement> Expression AssignmentExpression ConditionalExpression LogicalOrExpression LogicalAndExpression InclusiveOrExpression ExclusiveOrExpression AndExpression EqualityExpression RelationalExpression ShiftExpression AdditiveExpression MultiplicativeExpression CastExpression UnaryExpression PostfixExpression PostfixExpression2 ArgumentExpressionList PrimaryExpression
 
-%type <number> Constant T_INT_CONST T_FLOAT_CONST
-			
-%type <string> T_IDENTIFIER MultDivRemOP UnaryOperator ASSIGN_OPER T_ASSIGN_OPER T_EQUAL EQUALUALITY_OP REL_OP T_AND T_ADDSUB_OP  T_NOT T_MUL T_DIV T_REM
-                        
+ // definition and declaration block	
+%type <statement> ExtDef ExtDeclaration
+
+ // function and variable definition
+%type <statement> FuncDef ParameterList Parameter ParamDeclarator
+
+ // declarations		
+%type <statement> DeclarationList Declaration DeclarationSpec DeclarationSpec_T InitDeclarator InitDeclaratorList Declarator
+
+ // statements	
+%type <statement> StatementList Statement CompoundStatement CompoundStatement_2 SelectionStatement ExpressionStatement JumpStatement IterationStatement
+
+ // expressions
+%type <statement> Expression AssignmentExpression LogicalOrExpression LogicalAndExpression InclusiveOrExpression ExclusiveOrExpression AndExpression EqualityExpression RelationalExpression AdditiveExpression MultiplicativeExpression UnaryExpression PostfixExpression PostfixExpression2 ArgumentExpressionList PrimaryExpression
+
+ // constants
+%type <int_const> T_INT_CONST 
+%type <float_const> T_FLOAT_CONST
+
+ // identifier in string format
+%type <string> T_IDENTIFIER
+
+ // start symbol                       
 %start ROOT
                         
 %%
@@ -64,6 +70,8 @@ ExtDeclaration:
 		Declaration { $$ = $1; }
         |       FuncDef { $$ = $1; }
 		;
+
+// FUNCTION DEFINITION
 
 // FUNCTION DEFINITION
 
@@ -103,8 +111,6 @@ DeclarationSpec:
 
 DeclarationSpec_T:
 		T_TYPE_SPEC { ; }
-	|	T_TYPE_QUAL { ; }
-	|	T_STRG_SPEC { ; }
 		;
 
 InitDeclaratorList:
@@ -163,7 +169,6 @@ JumpStatement:
 
 IterationStatement:
 		T_WHILE T_LPAREN Expression T_RPAREN Statement { $$ = $5; }
-	|	T_DO Statement T_WHILE T_LPAREN Expression T_RPAREN T_SEMI { $$ = $2; }
 	|	T_FOR T_LPAREN Expression T_SEMI Expression T_SEMI Expression T_RPAREN Statement { $$ = $9; }
 		;
 
@@ -189,58 +194,40 @@ LogicalAndExpression:
 
 EqualityExpression:
 	    RelationalExpression { $$ = $1; }
-	|	EqualityExpression EQUALUALITY_OP RelationalExpression { $$ = $3; }
-		;
-
-EQUALUALITY_OP:
-		T_CMP_EQ { $$ = $1; }
-	|	T_CMP_NE { $$ = $1; }
+	|	EqualityExpression T_CMP_EQ RelationalExpression { $$ = $3; }
+	|	EqualityExpression T_CMP_NE RelationalExpression { $$ = $3; }
 		;
 
 RelationalExpression:
 		AdditiveExpression { $$ = $1; }
-	|       RelationalExpression REL_OP AdditiveExpression { $$ = $3; }
-		;
-
-REL_OP:
-		T_CMP_LT { $$ = $1; }
-	|	T_CMP_LE { $$ = $1; }
-	|	T_CMP_GT { $$ = $1; }
-	|	T_CMP_GE { $$ = $1; }
+	|       RelationalExpression T_CMP_LT AdditiveExpression { $$ = $3; }
+	|       RelationalExpression T_CMP_LE AdditiveExpression { $$ = $3; }
+	|       RelationalExpression T_CMP_GT AdditiveExpression { $$ = $3; }
+	|       RelationalExpression T_CMP_GE AdditiveExpression { $$ = $3; }
 		;
 
 AdditiveExpression:
 		MultiplicativeExpression { $$ = $1; }
-	|	AdditiveExpression T_ADDSUB_OP MultiplicativeExpression { $$ = $3; }
+	|	AdditiveExpression T_ADD MultiplicativeExpression { $$ = $3; }
+	|	AdditiveExpression T_SUB MultiplicativeExpression { $$ = $3; }
 		;
 
 MultiplicativeExpression:
-		CastExpression { $$ = $1; }
-	|	MultiplicativeExpression MultDivRemOP CastExpression { $$ = $3; }
-		;
-
-MultDivRemOP:
-		T_MUL { $$ = $1; }
-	|	T_DIV { $$ = $1; }
-	|	T_REM { $$ = $1; }
-		;
-
-CastExpression:
 		UnaryExpression { $$ = $1; }
-	|	T_LPAREN T_TYPE_SPEC T_RPAREN CastExpression { $$ = $4; }
+	|	MultiplicativeExpression T_MUL UnaryExpression { $$ = $3; }
+	|	MultiplicativeExpression T_DIV UnaryExpression { $$ = $3; }
+	|	MultiplicativeExpression T_REMAIN UnaryExpression { $$ = $3; }
 		;
 
 UnaryExpression:
 		PostfixExpression { $$ = $1; }
-	|	T_INCDEC UnaryExpression { $$ = $2; }
-	|	UnaryOperator CastExpression { $$ = $2; }
-		;
-
-UnaryOperator:
-		T_AND { $$ = $1; }
-	|	T_ADDSUB_OP { $$ = $1; }
-	|	T_MUL { $$ = $1; }
-	|	T_NOT { $$ = $1; }
+	|	T_INC UnaryExpression { $$ = $2; }
+	|	T_DEC UnaryExpression { $$ = $2; }
+	|	T_AND UnaryExpression { $$ = $2; }
+	|	T_ADD UnaryExpression { $$ = $2; }
+	|	T_SUB UnaryExpression { $$ = $2; }
+	|	T_MUL UnaryExpression { $$ = $2; }
+	|	T_NOT UnaryExpression { $$ = $2; }
 		;
 
 PostfixExpression:
@@ -249,7 +236,8 @@ PostfixExpression:
 	|	PostfixExpression T_LPAREN PostfixExpression2 { $$ = $3; }
 	|	PostfixExpression T_DOT T_IDENTIFIER { $$ = new Expression(); }
 	|	PostfixExpression T_ARROW T_IDENTIFIER { $$ = new Expression(); }
-	|	PostfixExpression T_INCDEC { $$ = new Expression(); }
+	|	PostfixExpression T_INC { $$ = new Expression(); }
+	|	PostfixExpression T_DEC { $$ = new Expression(); }
 		;
 
 PostfixExpression2:
@@ -263,20 +251,17 @@ ArgumentExpressionList:
 		;
 
 PrimaryExpression:
-		T_IDENTIFIER { $$ = new Expression(); }
-	|       Constant { $$ = new Expression(); }
+		T_IDENTIFIER   { $$ = new Expression(); }
+	|   T_INT_CONST    { $$ = new Expression(); }
+	|   T_FLOAT_CONST  { $$ = new Expression(); }
 	|	T_LPAREN Expression T_RPAREN { $$ = $2; }
 		;
 
-Constant:
-		T_INT_CONST { $$ = $1; }
-	|	T_FLOAT_CONST { $$ = $1; }
-		;
-
 %%
-ast_Top *g_root; // Definition of variable (to match declaration earlier)
-ast_Top *parseAST() {
-    g_root = new ast_Top;
+
+ASTVector *g_root; // Definition of variable (to match declaration earlier)
+ASTVector *parseAST() {
+    g_root = new ASTVector;
     yyparse();
     return g_root;
 }
