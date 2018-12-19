@@ -73,7 +73,7 @@ FRACTIONALCONSTANT (([0-9]*\.[0-9]+)|([0-9]+\.))
 
 EXPONENTPART ([eE][+-]?[0-9]+)
 
-FLOATINGSUFFI X ([flFL])
+FLOATINGSUFFIX ([flFL])
 
 INTEGERSUFFIX ([uU][lL]|[lL][uU]|[uUlL])
 
@@ -87,9 +87,9 @@ CHARCONSTANT ('(([\\]['])|([^']))+')
 
 STRINGLITERAL ["](([\\]["])|([^"]))*["]
 
-WHITESPACE [ \t\r\n]+
+WHITESPACE [\t\r\n]+
 
-PREPROC [#][ ][0-9]+[ ]{STRINGLITERAL}[ 0-9]*
+PREPROC [#][ ][0-9]+[ ]{STRINGLITERAL}[0-9]*
 
 ALL .
 

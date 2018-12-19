@@ -1,20 +1,26 @@
-%code requires{
+%code requires
+{
 
-#include "ast.h"
-extern ASTVector *g_root; // A way of getting the AST out
+	#include "ast.h"
+	NBlock *root;//抽象语法树根节点
 
-int yylex(void);
-void yyerror(const char *);
+	extern int yylex();
+	void yyerror(const char *);
 
 }
 
 // Represents the value associated with any kind of
 // AST node.
-%union{
-    const Base *statement;
-    int int_const;
-    float float_const;
-    std::string *string;
+%union
+{
+	NBlock* block;//代码段
+	NExpression* expression;//表达式
+	NStatement* statement;//语句
+	NIdentifier* identify;//变量
+	NVariableDeclaration* var_declaration;//变量声明
+	int int_const;//整型常量
+	float float_const;//浮点型常量
+	std::string *string;//字符串
 }
                         
 %token T_TYPE_SPEC T_IDENTIFIER
