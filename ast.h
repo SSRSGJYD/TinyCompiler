@@ -1,12 +1,13 @@
 #ifndef AST_H
 #define AST_H
 
-#include <llvm/IR/Value.h>
+//#include <llvm/IR/Value.h>
 #include <stdio.h>
 #include <iostream>
 #include <vector>
 #include <memory>
 #include <string>
+#include <cassert>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ public:
 	//打印节点
 	virtual void print(string prefix) const{}
 	//生成中间代码
-	virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
+	//virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
 };
 
 //表达式的基类
@@ -118,7 +119,7 @@ public:
 		cout << prefix << getTypeName() << this->m_DELIM << name << (isArray ? "(Array)" : "") << endl;
 		if( isArray && array->size() > 0 )
 		{
-			for(auto it=arraySize->begin(); it!=arraySize->end(); it++)
+			for(auto it=array->begin(); it!=array->end(); it++)
 			{
 				(*it)->print(nextPrefix);
 			}
@@ -155,6 +156,32 @@ public:
 	}
 
 };
+
+//一元运算类
+class NUnaryOperator : public NExpression
+{
+public:
+	int op;//运算符
+	shared_ptr<NExpression> expr;//表达式
+
+	NUnaryOperator(){}
+	NUnaryOperator(int op, shared_ptr<NExpression> expr):
+	op(op),expr(expr){}
+	//获取节点类型名
+	virtual string getTypeName() const override
+	{
+		return "NUnaryOperator";
+	}
+	//打印节点
+	virtual void print(string prefix) const override
+	{
+		string nextPrefix = prefix+this->m_PREFIX;
+		cout << prefix << getTypeName() << this->m_DELIM << op << endl;
+		expr->print(nextPrefix);
+	}
+
+};
+
 
 //二元运算类
 class NBinaryOperator : public NExpression
@@ -239,6 +266,29 @@ public:
 };
 
 /*-------------语句的子类---------------*/
+//表达式语句类
+class NExpressionStatement : public NStatement
+{
+public:
+	shared_ptr<NExpression> expr;//表达式
+
+    NExpressionStatement(){}
+	NExpressionStatement(shared_ptr<NExpression> expr):expr(expr){}
+	//获取节点类型名
+	virtual string getTypeName() const override
+	{
+		return "NExpressionStatement";
+	}
+	//打印节点
+	virtual void print(string prefix) const override
+	{
+		string nextPrefix = prefix+this->m_PREFIX;
+		cout << prefix << getTypeName() << this->m_DELIM << endl;
+		expr->print(nextPrefix);
+	}
+
+};
+
 //变量声明类
 class NVariableDeclaration : public NStatement
 {
@@ -256,12 +306,12 @@ public:
 	}
 
 	//获取节点类型名
-	string getTypeName() const override
+	virtual string getTypeName() const override
 	{
 		return "NVariableDeclaration";
 	}
 	//打印节点
-	void print(string prefix) const override
+	virtual void print(string prefix) const override
 	{
 		string nextPrefix = prefix+this->m_PREFIX;
 		cout << prefix << getTypeName() << this->m_DELIM << endl;

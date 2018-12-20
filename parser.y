@@ -2,272 +2,182 @@
 {
 
 	#include "ast.h"
-	NBlock *root;//抽象语法树根节点
-
+	NBlock *root;//AST根节点
 	extern int yylex();
 	void yyerror(const char *);
+	int yydebug=1;
 
 }
 
-// Represents the value associated with any kind of
-// AST node.
+//AST节点类型
 %union
 {
 	NBlock* block;//代码段
 	NExpression* expression;//表达式
 	NStatement* statement;//语句
-	NIdentifier* identify;//变量
-	NVariableDeclaration* var_declaration;//变量声明
+	NIdentifier* identifier;//变量与关键字标识符
+	vector<shared_ptr<NVariableDeclaration>>* var_vector;//变量列表
+	std::vector<shared_ptr<NExpression>>* expression_vector;//表达式列表
 	int int_const;//整型常量
 	float float_const;//浮点型常量
-	std::string *string;//字符串
+	string *str;//字符串
 }
-                        
-%token T_TYPE_SPEC T_IDENTIFIER
-%token T_SEMI T_COMMA T_LPAREN T_LBRACE T_RBRACE T_LBRACKET T_RBRACKET 
-%token T_LOGIC_OR T_LOGIC_AND T_OR T_XOR T_AND T_NOT
-%token T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
-%token T_MUL T_DIV T_REMAIN T_ADD T_SUB T_INC T_DEC
-%token T_DOT T_ARROW
-%token T_INT_CONST T_FLOAT_CONST
-%token T_IF T_WHILE T_FOR T_RETURN
-%nonassoc T_RPAREN
-%nonassoc T_ELSE
 
- // definition and declaration block	
-%type <statement> ExtDef ExtDeclaration
+/*-------------token---------------*/
+//变量类型与变量名：int float char void 变量名
+%token <str> T_INT T_FLOAT T_CHAR T_VOID T_IDENTIFIER
+//int常量与float常量
+%token <str> T_INT_CONST T_FLOAT_CONST
+//赋值符号与比较符号，依次为：= == >= > <= < !=
+%token <int_const> T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
+//各种标点符号，依次为：; , ( ) { } [ ] . ->
+%token <int_const> T_SEMI T_COMMA T_LPAREN T_RPAREN T_LBRACE T_RBRACE T_LBRACKET T_RBRACKET T_DOT T_ARROW
+//各种运算符号，依次为：|| && | ^ & ! * / % + - ++ -- -
+%token <int_const> T_LOGIC_OR T_LOGIC_AND T_OR T_XOR T_AND T_NOT T_MUL T_DIV T_MOD T_ADD T_SUB T_INC T_DEC
+//判断、循环、返回语句，依次为：if else while for return
+%token <int_const> T_IF T_ELSE T_WHILE T_FOR T_RETURN T_EXTERN
 
- // function and variable definition
-%type <statement> FuncDef ParameterList Parameter ParamDeclarator
+/*-------------type---------------*/
+//变量标识符，依次为：变量 类型名
+%type <identifier> Identifier Typename
+//表达式，依次为：一般表达式 赋值表达式 数字表达式
+%type <expression> Expression AssignmentExpression NumberExpression
+//运算式，依次为：一元运算式 二元运算式
+%type <expression> UnaryExpression BinaryExpression
+//函数声明的参数列表
+%type <var_vector> FuncParameter
+//函数调用的参数列表
+%type <expression_vector> CallParameter
+//代码段
+%type <block> Root Statements Block
+//语句，依次为：一般语句 条件语句 循环语句 变量定义语句 函数定义语句
+%type <statement> Statement SelectionStatement IterationStatement VarDeclaration FuncDeclaration
 
- // declarations		
-%type <statement> DeclarationList Declaration DeclarationSpec DeclarationSpec_T InitDeclarator InitDeclaratorList Declarator
+//定义优先级
+%left T_EQUAL // =
+%left T_LOGIC_OR // ||
+%left T_LOGIC_AND // &&
+%left T_OR // |
+%left T_XOR // ^
+%left T_AND // &
+%left T_CMP_EQ T_CMP_NE // == !=
+%left T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT // >= > <= <
+%left T_ADD T_SUB // + -
+%left T_MUL T_DIV T_MOD// * / %
+%left T_INC T_DEC T_NOT// ++ -- !
+%left T_LPAREN T_RPAREN T_DOT T_ARROW // () . ->
 
- // statements	
-%type <statement> StatementList Statement CompoundStatement CompoundStatement_2 SelectionStatement ExpressionStatement JumpStatement IterationStatement
 
- // expressions
-%type <statement> Expression AssignmentExpression LogicalOrExpression LogicalAndExpression InclusiveOrExpression ExclusiveOrExpression AndExpression EqualityExpression RelationalExpression AdditiveExpression MultiplicativeExpression UnaryExpression PostfixExpression PostfixExpression2 ArgumentExpressionList PrimaryExpression
-
- // constants
-%type <int_const> T_INT_CONST 
-%type <float_const> T_FLOAT_CONST
-
- // identifier in string format
-%type <string> T_IDENTIFIER
-
- // start symbol                       
-%start ROOT
+//开始                      
+%start Root
                         
 %%
 
-ROOT:
-	        ExtDef { ; }
+/*-------------代码段---------------*/
+Root:Statements { root = $1; };
+
+Statements : Statement { $$ = new NBlock(); $$->statements->push_back(shared_ptr<NStatement>($1)); }
+		| Statements Statement { $1->statements->push_back(shared_ptr<NStatement>($2)); }
+		;
+		
+Block : T_LBRACE Statements T_RBRACE { $$ = $2; }
+		| T_LBRACE T_RBRACE { $$ = new NBlock(); }
 		;
 
-// EXTERNAL DEFINITION
+/*-------------变量标识符---------------*/
+Identifier : T_IDENTIFIER { $$ = new NIdentifier(*$1); delete $1; };
+		
+Typename : T_VOID { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
+		| T_INT { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
+		| T_FLOAT { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
+		| T_CHAR { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
+		;
+   
+/*-------------表达式---------------*/
+Expression : AssignmentExpression { $$ = $1; }
+		 | Identifier T_LPAREN CallParameter T_RPAREN { $$ = new NFunctionCall(shared_ptr<NIdentifier>($1), shared_ptr<ExpressionList>($3)); }
+		 | Identifier { $$ = $1; }
+		 | NumberExpression
+		 | BinaryExpression
+		 | UnaryExpression
+		 | T_LPAREN Expression T_RPAREN { $$ = $2; }
+		 ;
 
-ExtDef:
-		ExtDeclaration { g_root->push($1); }
-        |       ExtDef ExtDeclaration { g_root->push($2); }
+AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); };
+
+NumberExpression : T_INT { $$ = new NConstant<int>(atol($1->c_str())); }
+		| T_FLOAT { $$ = new NConstant<float>(atof($1->c_str())); }
 		;
 
-ExtDeclaration:
-		Declaration { $$ = $1; }
-        |       FuncDef { $$ = $1; }
+/*-------------运算式---------------*/
+BinaryExpression : Expression T_CMP_EQ Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_CMP_GE Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_CMP_GT Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); } 
+		| Expression T_CMP_LE Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); } 
+		| Expression T_CMP_LT Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_CMP_NE Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_LOGIC_OR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_LOGIC_AND Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_OR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_XOR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_AND Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_MUL Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_DIV Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_MOD Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_ADD Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		| Expression T_SUB Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
+		;	
+						
+UnaryExpression : T_INC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
+	| Expression T_INC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
+	| T_DEC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
+	| Expression T_DEC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
+	| T_NOT Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
+	;
+
+
+/*-------------函数声明参数列表---------------*/	
+FuncParameter : /* 空 */ { $$ = new VariableList(); }
+		| VarDeclaration { $$ = new VariableList(); $$->push_back(shared_ptr<NVariableDeclaration>($1)); }
+		| FuncParameter T_COMMA VarDeclaration { $1->push_back(shared_ptr<NVariableDeclaration>($3)); }
 		;
 
-// FUNCTION DEFINITION
-
-// FUNCTION DEFINITION
-
-FuncDef:
-		DeclarationSpec T_IDENTIFIER T_LPAREN ParameterList T_RPAREN CompoundStatement { $$ = new Function(*$2, $4, $6); }
+/*-------------函数调用参数列表---------------*/	
+CallParameter : /* 空 */ { $$ = new ExpressionList(); }
+		| Expression { $$ = new ExpressionList(); $$->push_back(shared_ptr<NExpression>($1)); }
+		| CallParameter T_COMMA Expression { $1->push_back(shared_ptr<NExpression>($3)); }
+		;
+		
+/*-------------语句---------------*/	 
+Statement : VarDeclaration
+		| FuncDeclaration
+		| SelectionStatement
+		| IterationStatement
+		| T_SEMI { $$ = new NExpressionStatement(); }
+		| Expression T_SEMI { $$ = new NExpressionStatement(shared_ptr<NExpression>($1)); }
+		| T_RETURN Expression T_SEMI { $$ = new NReturnStatement(shared_ptr<NExpression>($2)); }
 		;
 
-ParameterList:
-		%empty { $$ = new ParamList(); }
-	| 	Parameter { $$ = new ParamList($1); }
-	|       ParameterList T_COMMA Parameter { $$->push($3); }
+VarDeclaration : Typename Identifier T_SEMI { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
+		| Typename Identifier T_EQUAL Expression T_SEMI { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<NExpression>($4)); }
 		;
 
-Parameter:
-		DeclarationSpec ParamDeclarator { $$ = $2; }
+FuncDeclaration : Typename Identifier T_LPAREN FuncParameter T_RPAREN Block { $$ = new NFunctionDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<VariableList>($4), shared_ptr<NBlock>($6)); }
+		| T_EXTERN Typename Identifier T_LPAREN FuncParameter T_RPAREN T_SEMI { $$ = new NFunctionDeclaration(shared_ptr<NIdentifier>($2), shared_ptr<NIdentifier>($3), shared_ptr<VariableList>($5), nullptr, true); }
+		;
+		
+SelectionStatement : T_IF Expression Block { $$ = new NIfStatement(shared_ptr<NExpression>($2), shared_ptr<NBlock>($3)); }
+		| T_IF Expression Block T_ELSE Block { $$ = new NIfStatement(shared_ptr<NExpression>($2), shared_ptr<NBlock>($3), shared_ptr<NBlock>($5)); }
+		| T_IF Expression Block T_ELSE SelectionStatement 
+		{
+			auto blk = new NBlock();
+			blk->statements->push_back(shared_ptr<NStatement>($5));
+			$$ = new NIfStatement(shared_ptr<NExpression>($2), shared_ptr<NBlock>($3), shared_ptr<NBlock>(blk)); 
+		}
 		;
 
-ParamDeclarator:
-		T_IDENTIFIER { $$ = new Parameter(*$1);}
-		;
-
-// Declaration
-
-DeclarationList:
-		Declaration { $$ = new DeclarationList($1); }
-	|	DeclarationList Declaration { $$->push($2); }
-		;
-
-Declaration:
-		DeclarationSpec InitDeclaratorList T_SEMI { $$ = $2; }
-		;
-
-DeclarationSpec:
-		DeclarationSpec_T { ; }
-	|	DeclarationSpec_T DeclarationSpec { ; }
-		;
-
-DeclarationSpec_T:
-		T_TYPE_SPEC { ; }
-		;
-
-InitDeclaratorList:
-		InitDeclarator { $$ = new VariableDeclaration($1); }
-	|       InitDeclaratorList T_COMMA InitDeclarator { $$->push($3); }
-		;
-
-InitDeclarator:
-		Declarator { ; }
-	|	Declarator T_EQUAL AssignmentExpression { ; }
-		;
-
-Declarator:
-		T_IDENTIFIER {$$ = new Variable(*$1); }
-		;
-
-// Statement
-
-StatementList:
-		Statement { $$ = new StatementList($1); }
-	|	StatementList Statement { $$->push($2); }
-		;
-
-Statement:
-		CompoundStatement { $$ = $1; }
-	|	SelectionStatement { $$ = $1; }
-	|	ExpressionStatement { $$ = $1; }
-	|   JumpStatement { $$ = $1; }
-	|	IterationStatement { $$ = $1; }
-		;
-
-CompoundStatement:
-		T_LBRACE CompoundStatement_2 { $$ = $2; }
-		;
-
-CompoundStatement_2:
-		T_RBRACE { $$ = new CompoundStatement; }
-	|	DeclarationList T_RBRACE { $$ = new CompoundStatement($1); }
-	|	DeclarationList StatementList T_RBRACE { $$ = new CompoundStatement($1, $2); }
-	|	StatementList T_RBRACE { $$ = new CompoundStatement($1); }
-		;
-
-SelectionStatement:
-		T_IF T_LPAREN Expression T_RPAREN Statement { $$ = new SelectionStatement($5); }
-|	T_IF T_LPAREN Expression T_RPAREN Statement T_ELSE Statement { $$ = new SelectionStatement($5, $7); }
-		;
-
-ExpressionStatement:
-		T_SEMI { $$ = new ExpressionStatement(); }
-	|	Expression T_SEMI { $$ = $1; }
-		;
-
-JumpStatement:
-		T_RETURN ExpressionStatement { $$ = $2; }
-		;
-
-IterationStatement:
-		T_WHILE T_LPAREN Expression T_RPAREN Statement { $$ = $5; }
-	|	T_FOR T_LPAREN Expression T_SEMI Expression T_SEMI Expression T_RPAREN Statement { $$ = $9; }
-		;
-
-// Expressions
-
-Expression:
-		AssignmentExpression { $$ = $1; }
-		;
-
-AssignmentExpression:
-		UnaryExpression T_EQUAL AssignmentExpression { $$ = $1; }
-		;
-
-LogicalOrExpression:
-		LogicalAndExpression { $$ = $1; }
-	|	LogicalOrExpression T_LOGIC_OR LogicalAndExpression { $$ = $3; }
-		;
-
-LogicalAndExpression:
-		EqualityExpression { $$ = $1; }
-	|	LogicalAndExpression T_LOGIC_AND InclusiveOrExpression { $$ = $3; }
-		;
-
-EqualityExpression:
-	    RelationalExpression { $$ = $1; }
-	|	EqualityExpression T_CMP_EQ RelationalExpression { $$ = $3; }
-	|	EqualityExpression T_CMP_NE RelationalExpression { $$ = $3; }
-		;
-
-RelationalExpression:
-		AdditiveExpression { $$ = $1; }
-	|       RelationalExpression T_CMP_LT AdditiveExpression { $$ = $3; }
-	|       RelationalExpression T_CMP_LE AdditiveExpression { $$ = $3; }
-	|       RelationalExpression T_CMP_GT AdditiveExpression { $$ = $3; }
-	|       RelationalExpression T_CMP_GE AdditiveExpression { $$ = $3; }
-		;
-
-AdditiveExpression:
-		MultiplicativeExpression { $$ = $1; }
-	|	AdditiveExpression T_ADD MultiplicativeExpression { $$ = $3; }
-	|	AdditiveExpression T_SUB MultiplicativeExpression { $$ = $3; }
-		;
-
-MultiplicativeExpression:
-		UnaryExpression { $$ = $1; }
-	|	MultiplicativeExpression T_MUL UnaryExpression { $$ = $3; }
-	|	MultiplicativeExpression T_DIV UnaryExpression { $$ = $3; }
-	|	MultiplicativeExpression T_REMAIN UnaryExpression { $$ = $3; }
-		;
-
-UnaryExpression:
-		PostfixExpression { $$ = $1; }
-	|	T_INC UnaryExpression { $$ = $2; }
-	|	T_DEC UnaryExpression { $$ = $2; }
-	|	T_AND UnaryExpression { $$ = $2; }
-	|	T_ADD UnaryExpression { $$ = $2; }
-	|	T_SUB UnaryExpression { $$ = $2; }
-	|	T_MUL UnaryExpression { $$ = $2; }
-	|	T_NOT UnaryExpression { $$ = $2; }
-		;
-
-PostfixExpression:
-		PrimaryExpression { $$ = $1; }
-	|	PostfixExpression T_LBRACKET Expression T_RBRACKET { $$ = $3; }
-	|	PostfixExpression T_LPAREN PostfixExpression2 { $$ = $3; }
-	|	PostfixExpression T_DOT T_IDENTIFIER { $$ = new Expression(); }
-	|	PostfixExpression T_ARROW T_IDENTIFIER { $$ = new Expression(); }
-	|	PostfixExpression T_INC { $$ = new Expression(); }
-	|	PostfixExpression T_DEC { $$ = new Expression(); }
-		;
-
-PostfixExpression2:
-		T_RPAREN { $$ = new Expression(); }
-	|	ArgumentExpressionList T_RPAREN { $$ = $1; }
-		;
-
-ArgumentExpressionList:
-		AssignmentExpression { $$ = $1; }
-	|	ArgumentExpressionList T_COMMA AssignmentExpression { $$ = $3; }
-		;
-
-PrimaryExpression:
-		T_IDENTIFIER   { $$ = new Expression(); }
-	|   T_INT_CONST    { $$ = new Expression(); }
-	|   T_FLOAT_CONST  { $$ = new Expression(); }
-	|	T_LPAREN Expression T_RPAREN { $$ = $2; }
+IterationStatement : T_FOR T_LPAREN Expression T_SEMI Expression T_SEMI Expression T_RPAREN Block { $$ = new NForStatement(shared_ptr<NBlock>($9), shared_ptr<NExpression>($3), shared_ptr<NExpression>($5), shared_ptr<NExpression>($7)); }
+		| T_WHILE T_LPAREN Expression T_RPAREN Block { $$ = new NForStatement(shared_ptr<NBlock>($5), nullptr, shared_ptr<NExpression>($3), nullptr); }
 		;
 
 %%
-
-ASTVector *g_root; // Definition of variable (to match declaration earlier)
-ASTVector *parseAST() {
-    g_root = new ASTVector;
-    yyparse();
-    return g_root;
-}
