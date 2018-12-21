@@ -2,10 +2,9 @@
 {
 
 	#include "ast.h"
-	NBlock *root;//AST根节点
+	extern NBlock *g_root;//AST根节点
 	extern int yylex();
 	void yyerror(const char *);
-	int yydebug=1;
 
 }
 
@@ -16,8 +15,9 @@
 	NExpression* expression;//表达式
 	NStatement* statement;//语句
 	NIdentifier* identifier;//变量与关键字标识符
+	NVariableDeclaration* var_decl;//变量定义
 	vector<shared_ptr<NVariableDeclaration>>* var_vector;//变量列表
-	std::vector<shared_ptr<NExpression>>* expression_vector;//表达式列表
+	vector<shared_ptr<NExpression>>* expression_vector;//表达式列表
 	int int_const;//整型常量
 	float float_const;//浮点型常量
 	string *str;//字符串
@@ -74,7 +74,7 @@
 %%
 
 /*-------------代码段---------------*/
-Root:Statements { root = $1; };
+Root:Statements { g_root = $1; };
 
 Statements : Statement { $$ = new NBlock(); $$->statements->push_back(shared_ptr<NStatement>($1)); }
 		| Statements Statement { $1->statements->push_back(shared_ptr<NStatement>($2)); }
@@ -105,8 +105,8 @@ Expression : AssignmentExpression { $$ = $1; }
 
 AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); };
 
-NumberExpression : T_INT { $$ = new NConstant<int>(atol($1->c_str())); }
-		| T_FLOAT { $$ = new NConstant<float>(atof($1->c_str())); }
+NumberExpression : T_INT_CONST { $$ = new NConstant<int>(atol($1->c_str())); }
+		| T_FLOAT_CONST { $$ = new NConstant<float>(atof($1->c_str())); }
 		;
 
 /*-------------运算式---------------*/
@@ -138,8 +138,8 @@ UnaryExpression : T_INC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExp
 
 /*-------------函数声明参数列表---------------*/	
 FuncParameter : /* 空 */ { $$ = new VariableList(); }
-		| VarDeclaration { $$ = new VariableList(); $$->push_back(shared_ptr<NVariableDeclaration>($1)); }
-		| FuncParameter T_COMMA VarDeclaration { $1->push_back(shared_ptr<NVariableDeclaration>($3)); }
+		| VarDeclaration { $$ = new VariableList(); $$->push_back(shared_ptr<NVariableDeclaration>($<var_decl>1)); }
+		| FuncParameter T_COMMA VarDeclaration { $1->push_back(shared_ptr<NVariableDeclaration>($<var_decl>3)); }
 		;
 
 /*-------------函数调用参数列表---------------*/	
@@ -149,7 +149,7 @@ CallParameter : /* 空 */ { $$ = new ExpressionList(); }
 		;
 		
 /*-------------语句---------------*/	 
-Statement : VarDeclaration
+Statement : VarDeclaration T_SEMI
 		| FuncDeclaration
 		| SelectionStatement
 		| IterationStatement
@@ -158,8 +158,8 @@ Statement : VarDeclaration
 		| T_RETURN Expression T_SEMI { $$ = new NReturnStatement(shared_ptr<NExpression>($2)); }
 		;
 
-VarDeclaration : Typename Identifier T_SEMI { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
-		| Typename Identifier T_EQUAL Expression T_SEMI { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<NExpression>($4)); }
+VarDeclaration : Typename Identifier { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
+		| Typename Identifier T_EQUAL Expression { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<NExpression>($4)); }
 		;
 
 FuncDeclaration : Typename Identifier T_LPAREN FuncParameter T_RPAREN Block { $$ = new NFunctionDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<VariableList>($4), shared_ptr<NBlock>($6)); }

@@ -3,12 +3,12 @@
 
 using namespace std;
 
-extern NBlock* root;
+NBlock* g_root;
 extern int yyparse();
 
 int main(int argc, char **argv)
 {
     yyparse();
-    cout << root << endl;
+    g_root->print("");
     return 0;
 }

@@ -53,10 +53,10 @@ ALL .
 "return"                puts("T_RETURN"); return TOKEN(T_RETURN);
 "extern"                puts("T_EXTERN"); return TOKEN(T_EXTERN);
 
-[_a-zA-Z][_a-zA-Z0-9]*  SAVE_TOKEN; puts("T_IDENTIFIER"); return T_IDENTIFIER;
+[_a-zA-Z][_a-zA-Z0-9]*  SAVE_TOKEN; printf("T_IDENTIFIER : %s\n",yytext); return T_IDENTIFIER;
 
-[0-9]+[\.][0-9]*        SAVE_TOKEN; puts("T_FLOAT_CONST"); return T_FLOAT_CONST;
-[0-9]+                  SAVE_TOKEN; puts("T_INT_CONST"); return T_INT_CONST;
+[0-9]+[\.][0-9]*        SAVE_TOKEN; printf("T_FLOAT_CONST : %s\n",yytext); return T_FLOAT_CONST;
+[0-9]+                  SAVE_TOKEN; printf("T_INT_CONST : %s\n",yytext); return T_INT_CONST;
 
 "=="					puts("T_CMP_EQ"); return TOKEN(T_CMP_EQ);
 "!="                    puts("T_CMP_NE"); return TOKEN(T_CMP_NE);
@@ -97,7 +97,8 @@ ALL .
 ","                     puts("T_COMMA"); return TOKEN(T_COMMA);
 
 "//"                	;
-{WHITESPACE}		    ;
+" "						;
+[\t\r\n]+				;
 
 .                       printf("Unknown token:%s\n", yytext); yyterminate();
 
@@ -105,7 +106,7 @@ ALL .
 
 void yyerror(char const *s) 
 {
-	fprintf (stderr, "Parse error : %s\n", s);
+	fprintf (stderr, "Parse error : %s , wrong token : %s\n", s,yytext);
 	exit(1);
 }
 
