@@ -2,10 +2,71 @@
 #include"codegen.h"
 
 /*-------------一些全局函数-------------*/
+//输出错误
 unique_ptr<NExpression> LogError(string str)
 {
 	cout<<"LogError: "<<str<<endl;
 	return nullptr;
+}
+
+//返回string类型的type
+string llvmTypeToStr(Value *value)
+{
+    Type::TypeID typeID;        
+    if(value)
+        typeID = value->getType()->getTypeID();
+    else
+        return "Value is nullptr";
+
+    switch (typeID)
+    {
+    	case Type::VoidTyID:
+    		return "VoidTyID";
+    	case Type::HalfTyID:
+    		return "HalfTyID";
+        case Type::FloatTyID:
+            return "FloatTyID";
+        case Type::DoubleTyID:
+            return "DoubleTyID";
+        case Type::IntegerTyID:
+            return "IntegerTyID";
+        case Type::FunctionTyID:
+            return "FunctionTyID";
+        case Type::StructTyID:
+            return "StructTyID";
+        case Type::ArrayTyID:
+            return "ArrayTyID";
+        case Type::PointerTyID:
+            return "PointerTyID";
+        case Type::VectorTyID:
+            return "VectorTyID";
+        default:
+            return "Unknown";
+    }
+}
+
+//返回Type类型的type
+Type *getVarType(shared_ptr<NIdentifier> type,CodeGenContext &context)
+{
+	assert(type->isType);
+	if(!type->name.compare("int"))
+	{
+        return Type::getInt32Ty(context.llvmContext);
+    }
+    if(!type->name.compare("float"))
+    {
+        return Type::getFloatTy(context.llvmContext);
+    }
+    if(!type->name.compare("char"))
+    {
+        return Type::getInt8Ty(context.llvmContext);
+    }
+    if(!type->name.compare("void"))
+    {
+        return Type::getVoidTy(context.llvmContext);
+    }
+
+    return nullptr;
 }
 
 /*-------------CodeGenContext类函数实现-------------*/
@@ -157,6 +218,39 @@ Value* NFunctionCall::codeGen(CodeGenContext &context)
     return context.builder.CreateCall(callFunc, argsv, "callFunc");
 }
 
+//一元运算类代码生成
+Value* NUnaryOperator::codeGen(CodeGenContext &context)
+{
+	cout << "Generating unary operator" << endl;
+	Value* L = this->expr->codeGen(context);
+	Value* R = ConstantInt::get(Type::getInt32Ty(context.llvmContext),1, true);
+	bool fp = false;//是否为浮点数计算
+
+    if(!L)
+    {
+        return nullptr;
+    }
+    
+	//判断是否为浮点数记算
+	if((L->getType()->getTypeID() == Type::FloatTyID))
+	{
+		fp = true;
+    }
+    
+    //判断一元运算类型
+    switch (this->op)
+    {
+        case T_INC:
+            return fp ? LogError("Float type has no INC operation") : context.builder.CreateAdd(L, R, "addtmp");
+        case T_DEC:
+            return fp ? LogError("Float type has no DEC operation") : context.builder.CreateSub(L, R, "subtmp");
+        case T_NOT:
+            return context.builder.CreateNot(L, "nottmp");
+		default:
+			return LogError("Unknown unary operator");
+    }
+}
+
 //二元运算类代码生成
 Value* NBinaryOperator::codeGen(CodeGenContext &context)
 {
@@ -165,58 +259,169 @@ Value* NBinaryOperator::codeGen(CodeGenContext &context)
 	Value* R = this->rhs->codeGen(context);
 	bool fp = false;//是否为浮点数计算
 	
-	if((L->getType()->getTypeID() == Type::FloatTyID) || (R->getType()->getTypeID() == Type::DoubleTyID) ){  // type upgrade
-        fp = true;
-        if( (R->getType()->getTypeID() != Type::DoubleTyID) ){
-            R = context.builder.CreateUIToFP(R, Type::getDoubleTy(context.llvmContext), "ftmp");
+	//若是浮点数计算，则统一形式
+	if((L->getType()->getTypeID() == Type::FloatTyID) || (R->getType()->getTypeID() == Type::FloatTyID))
+	{
+		fp = true;
+		if((R->getType()->getTypeID() != Type::FloatTyID))
+		{
+            R = context.builder.CreateUIToFP(R, Type::getFloatTy(context.llvmContext),"ftmp");
         }
-        if( (L->getType()->getTypeID() != Type::DoubleTyID) ){
-            L = context.builder.CreateUIToFP(L, Type::getDoubleTy(context.llvmContext), "ftmp");
+        if((L->getType()->getTypeID() != Type::FloatTyID))
+        {
+            L = context.builder.CreateUIToFP(L, Type::getFloatTy(context.llvmContext),"ftmp");
         }
     }
 
-    if( !L || !R ){
+    if( !L || !R )
+    {
         return nullptr;
     }
     cout << "fp = " << ( fp ? "true" : "false" ) << endl;
-    cout << "L is " << TypeSystem::llvmTypeToStr(L) << endl;
-    cout << "R is " << TypeSystem::llvmTypeToStr(R) << endl;
-
-    switch (this->op){
-        case TPLUS:
-            return fp ? context.builder.CreateFAdd(L, R, "addftmp") : context.builder.CreateAdd(L, R, "addtmp");
-        case TMINUS:
-            return fp ? context.builder.CreateFSub(L, R, "subftmp") : context.builder.CreateSub(L, R, "subtmp");
-        case TMUL:
+    cout << "L = " << llvmTypeToStr(L) << endl;
+    cout << "R = " << llvmTypeToStr(R) << endl;
+    
+    //判断二元运算类型
+    switch (this->op)
+    {
+    	case T_CMP_EQ:
+    		return fp ? context.builder.CreateFCmpOEQ(L, R, "cmpftmp") : context.builder.CreateICmpEQ(L, R, "cmptmp");
+    	case T_CMP_GE:
+    		return fp ? context.builder.CreateFCmpOGE(L, R, "cmpftmp") : context.builder.CreateICmpSGE(L, R, "cmptmp");
+    	case T_CMP_GT:
+    		return fp ? context.builder.CreateFCmpOGT(L, R, "cmpftmp") : context.builder.CreateICmpSGT(L, R, "cmptmp");
+    	case T_CMP_LE:
+    		return fp ? context.builder.CreateFCmpOLE(L, R, "cmpftmp") : context.builder.CreateICmpSLE(L, R, "cmptmp");
+    	case T_CMP_LT:
+    		return fp ? context.builder.CreateFCmpULT(L, R, "cmpftmp") : context.builder.CreateICmpULT(L, R, "cmptmp");
+    	case T_CMP_NE:
+    		return fp ? context.builder.CreateFCmpONE(L, R, "cmpftmp") : context.builder.CreateICmpNE(L, R, "cmptmp");
+        case T_OR:
+            return fp ? LogError("Float type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
+        case T_XOR:
+            return fp ? LogError("Float type has no XOR operation") : context.builder.CreateXor(L, R, "xortmp");
+        case T_AND:
+            return fp ? LogError("Float type has no AND operation") : context.builder.CreateAnd(L, R, "andtmp");
+        case T_MUL:
             return fp ? context.builder.CreateFMul(L, R, "mulftmp") : context.builder.CreateMul(L, R, "multmp");
-        case TDIV:
+        case T_DIV:
             return fp ? context.builder.CreateFDiv(L, R, "divftmp") : context.builder.CreateSDiv(L, R, "divtmp");
-        case TAND:
-            return fp ? LogErrorV("Double type has no AND operation") : context.builder.CreateAnd(L, R, "andtmp");
-        case TOR:
-            return fp ? LogErrorV("Double type has no OR operation") : context.builder.CreateOr(L, R, "ortmp");
-        case TXOR:
-            return fp ? LogErrorV("Double type has no XOR operation") : context.builder.CreateXor(L, R, "xortmp");
-        case TSHIFTL:
-            return fp ? LogErrorV("Double type has no LEFT SHIFT operation") : context.builder.CreateShl(L, R, "shltmp");
-        case TSHIFTR:
-            return fp ? LogErrorV("Double type has no RIGHT SHIFT operation") : context.builder.CreateAShr(L, R, "ashrtmp");
-
-        case TCLT:
-            return fp ? context.builder.CreateFCmpULT(L, R, "cmpftmp") : context.builder.CreateICmpULT(L, R, "cmptmp");
-        case TCLE:
-            return fp ? context.builder.CreateFCmpOLE(L, R, "cmpftmp") : context.builder.CreateICmpSLE(L, R, "cmptmp");
-        case TCGE:
-            return fp ? context.builder.CreateFCmpOGE(L, R, "cmpftmp") : context.builder.CreateICmpSGE(L, R, "cmptmp");
-        case TCGT:
-            return fp ? context.builder.CreateFCmpOGT(L, R, "cmpftmp") : context.builder.CreateICmpSGT(L, R, "cmptmp");
-        case TCEQ:
-            return fp ? context.builder.CreateFCmpOEQ(L, R, "cmpftmp") : context.builder.CreateICmpEQ(L, R, "cmptmp");
-        case TCNE:
-            return fp ? context.builder.CreateFCmpONE(L, R, "cmpftmp") : context.builder.CreateICmpNE(L, R, "cmptmp");
-        default:
-            return LogErrorV("Unknown binary operator");
+    	case T_ADD:
+    		return fp ? context.builder.CreateFAdd(L, R, "addftmp") : context.builder.CreateAdd(L, R, "addtmp");
+        case T_SUB:
+            return fp ? context.builder.CreateFSub(L, R, "subftmp") : context.builder.CreateSub(L, R, "subtmp");
+		default:
+			return LogError("Unknown binary operator");
     }
+}
+
+//赋值类代码生成
+Value* NAssignment::codeGen(CodeGenContext &context)
+{
+	cout << "Generating assignment of " << this->lhs->name << endl;
+    Value* dst = context.getSymbolValue(this->lhs->name);
+    string dstTypeStr = context.getSymbolType(this->lhs->name)->name;
+    
+    if(!dst)
+    {
+    	return LogError("Undeclared variable");
+    }
+    Value* exp = exp = this->rhs->codeGen(context);
+    context.builder.CreateStore(exp,dst);
+    return dst;
+}
+
+//代码段类代码生成
+Value* NBlock::codeGen(CodeGenContext &context)
+{
+	cout << "Generating block" << endl;
+	Value* last = nullptr;
+	for(auto it=this->statements->begin(); it!=this->statements->end(); it++)
+	{
+		last = (*it)->codeGen(context);
+    }
+    return last;
+}
+
+//表达式语句类代码生成
+Value* NExpressionStatement::codeGen(CodeGenContext &context)
+{
+	return this->expr->codeGen(context);
+}
+
+//变量声明与定义类代码生成
+Value* NVariableDeclaration::codeGen(CodeGenContext &context)
+{
+    cout << "Generating variable declaration of " << this->type->name << " " << this->id->name << endl;
+    Type* type = getVarType(this->type, context);
+
+    Value* alloca = nullptr;//分配空间
+    
+    alloca = context.builder.CreateAlloca(type);
+
+    context.setSymbolType(this->id->name, this->type);
+    context.setSymbolValue(this->id->name, alloca);
+    
+    if( this->assignmentExpr != nullptr )//赋值
+    {
+    	NAssignment assignment(this->id, this->assignmentExpr);
+        assignment.codeGen(context);
+    }
+    return alloca;
+}
+
+//函数定义类代码生成
+Value* NFunctionDeclaration::codeGen(CodeGenContext &context)
+{
+	cout << "Generating function declaration of " << this->id->name << endl;
+	vector<Type*> argTypes;
+	
+	for(auto &arg: *this->arguments)
+	{
+		argTypes.push_back(getVarType(arg->type, context));
+	}
+    Type* retType = getVarType(this->type, context);
+    
+    FunctionType* functionType = FunctionType::get(retType, argTypes, false);
+    Function* function = Function::Create(functionType, GlobalValue::ExternalLinkage, this->id->name.c_str(), context.theModule.get());
+
+    if(!this->isExternal)//不是引用的外部函数
+    {
+    	//创建代码段
+    	BasicBlock* basicBlock = BasicBlock::Create(context.llvmContext, "entry", function, nullptr);
+    	
+    	context.builder.SetInsertPoint(basicBlock);
+        context.pushBlock(basicBlock);
+
+		//函数参数设置
+        auto origin_arg = this->arguments->begin();
+        for(auto &arg: function->args())
+        {
+        	arg.setName((*origin_arg)->id->name);
+            Value* argAlloc;
+            argAlloc = (*origin_arg)->codeGen(context);
+
+            context.builder.CreateStore(&arg, argAlloc, false);
+            context.setSymbolValue((*origin_arg)->id->name, argAlloc);
+            context.setSymbolType((*origin_arg)->id->name, (*origin_arg)->type);
+            context.setFuncArg((*origin_arg)->id->name, true);
+            origin_arg++;
+        }
+		
+		//代码段与返回值
+        this->block->codeGen(context);
+        if( context.getReturnValue())
+        {
+            context.builder.CreateRet(context.getReturnValue());
+        }
+        else
+        {
+            return LogError("Function block return value not found");
+        }
+        context.popBlock();
+    }
+
+    return function;
 }
 
 

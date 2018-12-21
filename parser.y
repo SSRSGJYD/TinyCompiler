@@ -32,8 +32,8 @@
 %token <int_const> T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
 //各种标点符号，依次为：; , ( ) { } [ ] . ->
 %token <int_const> T_SEMI T_COMMA T_LPAREN T_RPAREN T_LBRACE T_RBRACE T_LBRACKET T_RBRACKET T_DOT T_ARROW
-//各种运算符号，依次为：|| && | ^ & ! * / % + - ++ -- -
-%token <int_const> T_LOGIC_OR T_LOGIC_AND T_OR T_XOR T_AND T_NOT T_MUL T_DIV T_MOD T_ADD T_SUB T_INC T_DEC
+//各种运算符号，依次为：| ^ & ! * / + - ++ -- -
+%token <int_const> T_OR T_XOR T_AND T_NOT T_MUL T_DIV T_ADD T_SUB T_INC T_DEC
 //判断、循环、返回语句，依次为：if else while for return
 %token <int_const> T_IF T_ELSE T_WHILE T_FOR T_RETURN T_EXTERN
 
@@ -55,15 +55,13 @@
 
 //定义优先级
 %left T_EQUAL // =
-%left T_LOGIC_OR // ||
-%left T_LOGIC_AND // &&
 %left T_OR // |
 %left T_XOR // ^
 %left T_AND // &
 %left T_CMP_EQ T_CMP_NE // == !=
 %left T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT // >= > <= <
 %left T_ADD T_SUB // + -
-%left T_MUL T_DIV T_MOD// * / %
+%left T_MUL T_DIV// * /
 %left T_INC T_DEC T_NOT// ++ -- !
 %left T_LPAREN T_RPAREN T_DOT T_ARROW // () . ->
 
@@ -116,14 +114,11 @@ BinaryExpression : Expression T_CMP_EQ Expression { $$ = new NBinaryOperator(sha
 		| Expression T_CMP_LE Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); } 
 		| Expression T_CMP_LT Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_CMP_NE Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
-		| Expression T_LOGIC_OR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
-		| Expression T_LOGIC_AND Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_OR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_XOR Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_AND Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_MUL Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_DIV Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
-		| Expression T_MOD Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_ADD Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		| Expression T_SUB Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
 		;	

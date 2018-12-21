@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include <llvm/IR/Value.h>
+//#include <llvm/IR/Value.h>
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -43,7 +43,7 @@ public:
 	//打印节点
 	virtual void print(string prefix) const{}
 	//生成中间代码
-	virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
+	//virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
 };
 
 //表达式的基类
@@ -101,14 +101,12 @@ public:
 	}
 };
 
-//变量类（有一般变量、数组、类型名）
+//变量类（有一般变量、类型名）
 class NIdentifier : public NExpression
 {
 public:
 	string name;//变量名称
     bool isType = false;//是否为类型名
-    bool isArray = false;//是否为数组
-    shared_ptr<ExpressionList> array = make_shared<ExpressionList>();//包含表达式元素指针
 
     NIdentifier(){}
 	NIdentifier(const std::string &name):name(name) {}
@@ -121,14 +119,7 @@ public:
 	virtual void print(string prefix) const override
 	{
 		string nextPrefix = prefix+this->m_PREFIX;
-		cout << prefix << getTypeName() << this->m_DELIM << name << (isArray ? "(Array)" : "") << endl;
-		if( isArray && array->size() > 0 )
-		{
-			for(auto it=array->begin(); it!=array->end(); it++)
-			{
-				(*it)->print(nextPrefix);
-			}
-		}
+		cout << prefix << getTypeName() << this->m_DELIM << name << endl;
 	}
 };
 
@@ -294,7 +285,7 @@ public:
 
 };
 
-//变量声明类
+//变量声明与定义类
 class NVariableDeclaration : public NStatement
 {
 public:
@@ -307,7 +298,6 @@ public:
 	type(type),id(id),assignmentExpr(assignmentExpr)
 	{
 		assert(type->isType);
-		assert(!id->isArray || (id->isArray && id->array != nullptr));
 	}
 
 	//获取节点类型名
@@ -329,7 +319,7 @@ public:
 	}
 };
 
-//函数声明类
+//函数定义类
 class NFunctionDeclaration : public NStatement
 {
 public:

@@ -80,14 +80,10 @@ ALL .
 "++"                    puts("T_INC"); return TOKEN(T_INC);
 "--"                    puts("T_DEC"); return TOKEN(T_DEC);
 
-"||"                    puts("T_LOGIC_OR"); return TOKEN(T_LOGIC_OR);
-"&&"                    puts("T_LOGIC_AND"); return TOKEN(T_LOGIC_AND);
-
 "+"                     puts("T_ADD"); return TOKEN(T_ADD);
 "-"                     puts("T_SUB"); return TOKEN(T_SUB);
 "*"                     puts("T_MUL"); return TOKEN(T_MUL);
 "/"                     puts("T_DIV"); return TOKEN(T_DIV);
-"%"                     puts("T_MOD"); return TOKEN(T_MOD);
 
 "&"                     puts("T_AND"); return TOKEN(T_AND);
 "|"                     puts("T_OR"); return TOKEN(T_OR);
