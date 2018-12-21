@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-//#include <llvm/IR/Value.h>
+#include <llvm/IR/Value.h>
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -9,7 +9,12 @@
 #include <string>
 #include <cassert>
 
-using namespace std;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+using std::shared_ptr;
+using std::make_shared;
 
 class CodeGenContext;
 class NBlock;
@@ -38,7 +43,7 @@ public:
 	//打印节点
 	virtual void print(string prefix) const{}
 	//生成中间代码
-	//virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
+	virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
 };
 
 //表达式的基类
@@ -82,8 +87,8 @@ class NConstant : public NExpression
 {
 public:
 	T value;
-    NConstant(){}
-    NConstant(T value):value(value){}
+	NConstant(){}
+	NConstant(T value):value(value){}
     //获取节点类型名
 	virtual string getTypeName() const override
 	{
