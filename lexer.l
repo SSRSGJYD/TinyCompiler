@@ -93,8 +93,8 @@ ALL .
 ","                     puts("T_COMMA"); return TOKEN(T_COMMA);
 
 "//"                	;
-" "						;
-[\t\r\n]+				;
+" "                	;
+[\t\r\n]+               ;
 
 .                       printf("Unknown token:%s\n", yytext); yyterminate();
 

@@ -123,11 +123,11 @@ BinaryExpression : Expression T_CMP_EQ Expression { $$ = new NBinaryOperator(sha
 		;	
 						
 UnaryExpression : T_INC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
-	| Expression T_INC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
-	| T_DEC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
-	| Expression T_DEC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
-	| T_NOT Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
-	;
+		| Expression T_INC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
+		| T_DEC Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
+		| Expression T_DEC { $$ = new NUnaryOperator($2, shared_ptr<NExpression>($1)); }
+		| T_NOT Expression { $$ = new NUnaryOperator($1, shared_ptr<NExpression>($2)); }
+		;
 
 
 /*-------------函数声明参数列表---------------*/	
