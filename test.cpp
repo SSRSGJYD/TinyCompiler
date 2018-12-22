@@ -1,4 +1,5 @@
 int a = 2;
+float fl = 3.7;
 int func(int b,int c)
 {
 	int temp = b+(2*c)-b*c;
@@ -6,6 +7,6 @@ int func(int b,int c)
 }
 int main()
 {
-	int result = func(12,23);
+	int result = func(a,23);
 	return 0;
 }

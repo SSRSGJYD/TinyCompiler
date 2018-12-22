@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-//#include <llvm/IR/Value.h>
+#include "llvm/IR/Value.h"
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -36,22 +36,22 @@ protected:
 	const char m_DELIM = ':';
 	const char* m_PREFIX = "--";
 public:
-    Node(){}
+	Node(){}
 	virtual ~Node() {}
 	//获取节点类型名
 	virtual string getTypeName() const = 0;
 	//打印节点
 	virtual void print(string prefix) const{}
 	//生成中间代码
-	//virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
+	virtual llvm::Value *codeGen(CodeGenContext &context) { return (llvm::Value *)0; }
 };
 
 //表达式的基类
 class NExpression : public Node
 {
 public:
-    NExpression(){}
-    //获取节点类型名
+	NExpression(){}
+	//获取节点类型名
 	virtual string getTypeName() const override
 	{
 		return "NExpression";
@@ -67,8 +67,8 @@ public:
 class NStatement : public Node
 {
 public:
-    NStatement(){}
-    //获取节点类型名
+	NStatement(){}
+	//获取节点类型名
 	virtual string getTypeName() const override
 	{
 		return "NStatement";
@@ -82,14 +82,14 @@ public:
 
 /*-------------表达式的子类---------------*/
 //常量类（有double、int、char）
-template<class T>
+template<typename T>
 class NConstant : public NExpression
 {
 public:
 	T value;
 	NConstant(){}
 	NConstant(T value):value(value){}
-    //获取节点类型名
+	//获取节点类型名
 	virtual string getTypeName() const override
 	{
 		return "NConstant";
@@ -99,6 +99,8 @@ public:
 	{
 		cout << prefix << getTypeName() << this->m_DELIM << value << endl;
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 };
 
 //变量类（有一般变量、类型名）
@@ -106,11 +108,11 @@ class NIdentifier : public NExpression
 {
 public:
 	string name;//变量名称
-    bool isType = false;//是否为类型名
-
-    NIdentifier(){}
+	bool isType = false;//是否为类型名
+	
+	NIdentifier(){}
 	NIdentifier(const std::string &name):name(name) {}
-    //获取节点类型名
+	//获取节点类型名
 	virtual string getTypeName() const override
 	{
 		return "NIdentifier";
@@ -121,6 +123,8 @@ public:
 		string nextPrefix = prefix+this->m_PREFIX;
 		cout << prefix << getTypeName() << this->m_DELIM << name << endl;
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 };
 
 //函数调用类
@@ -150,6 +154,8 @@ public:
 			(*it)->print(nextPrefix);
 		}
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -175,6 +181,8 @@ public:
 		cout << prefix << getTypeName() << this->m_DELIM << op << endl;
 		expr->print(nextPrefix);
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -203,6 +211,8 @@ public:
 		lhs->print(nextPrefix);
 		rhs->print(nextPrefix);
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -231,6 +241,8 @@ public:
 		lhs->print(nextPrefix);
 		rhs->print(nextPrefix);
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -258,6 +270,8 @@ public:
 			(*it)->print(nextPrefix);
 		}
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -267,8 +281,8 @@ class NExpressionStatement : public NStatement
 {
 public:
 	shared_ptr<NExpression> expr;//表达式
-
-    NExpressionStatement(){}
+	
+	NExpressionStatement(){}
 	NExpressionStatement(shared_ptr<NExpression> expr):expr(expr){}
 	//获取节点类型名
 	virtual string getTypeName() const override
@@ -282,6 +296,8 @@ public:
 		cout << prefix << getTypeName() << this->m_DELIM << endl;
 		expr->print(nextPrefix);
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -317,6 +333,8 @@ public:
 			assignmentExpr->print(nextPrefix);
 		}
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 };
 
 //函数定义类
@@ -352,9 +370,11 @@ public:
 			(*it)->print(nextPrefix);
 		}
 		assert(isExternal || block != nullptr);
-		if( block )
+		if( block)
 			block->print(nextPrefix);
 	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
@@ -372,16 +392,18 @@ public:
 		return "NReturnStatement";
 	}
 	//打印节点
-    virtual void print(string prefix) const override
-    {
-    	string nextPrefix = prefix + this->m_PREFIX;
-    	cout << prefix << getTypeName() << this->m_DELIM << endl;
-    	expression->print(nextPrefix);
-    }
+	virtual void print(string prefix) const override
+	{
+		string nextPrefix = prefix + this->m_PREFIX;
+		cout << prefix << getTypeName() << this->m_DELIM << endl;
+		expression->print(nextPrefix);
+	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
-//if语句类
+//条件语句类
 class NIfStatement: public NStatement
 {
 public:
@@ -393,59 +415,63 @@ public:
 	NIfStatement(shared_ptr<NExpression> cond,shared_ptr<NBlock> blk,shared_ptr<NBlock> blk2 = nullptr):
 	condition(cond),trueBlock(blk),falseBlock(blk2){}
 	//获取节点类型名
-    virtual string getTypeName() const override
-    {
-    	return "NIfStatement";
-    }
+	virtual string getTypeName() const override
+	{
+		return "NIfStatement";
+	}
 	//打印节点
-    virtual void print(string prefix) const override
-    {
-    	string nextPrefix = prefix + this->m_PREFIX;
-    	cout << prefix << getTypeName() << this->m_DELIM << endl;
-    	condition->print(nextPrefix);
-    	trueBlock->print(nextPrefix);
-    	if( falseBlock )
-    	{
-    		falseBlock->print(nextPrefix);
-    	}
-    }
+	virtual void print(string prefix) const override
+	{
+		string nextPrefix = prefix + this->m_PREFIX;
+		cout << prefix << getTypeName() << this->m_DELIM << endl;
+		condition->print(nextPrefix);
+		trueBlock->print(nextPrefix);
+		if( falseBlock )
+		{
+			falseBlock->print(nextPrefix);
+		}
+	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 
-//for循环语句类
-class NForStatement: public NStatement
+//循环语句类
+class NIterationStatement: public NStatement
 {
 public:
 	shared_ptr<NExpression> initial, condition, increment;//初始值、条件、增幅
 	shared_ptr<NBlock> block;//执行代码段
 	
-	NForStatement(){}
-	NForStatement(shared_ptr<NBlock> b, shared_ptr<NExpression> init = nullptr, shared_ptr<NExpression> cond = nullptr, shared_ptr<NExpression> incre = nullptr):
+	NIterationStatement(){}
+	NIterationStatement(shared_ptr<NBlock> b, shared_ptr<NExpression> init = nullptr, shared_ptr<NExpression> cond = nullptr, shared_ptr<NExpression> incre = nullptr):
 	block(b), initial(init), condition(cond), increment(incre)
 	{
 		if( condition == nullptr )
 		{
 			condition = make_shared<NConstant<int>>(1);
 		}
-    }
+	}
 	//获取节点类型名
-    virtual string getTypeName() const override
-    {
-    	return "NForStatement";
-    }
+	virtual string getTypeName() const override
+	{
+		return "NIterationStatement";
+	}
 	//打印节点
-    virtual void print(string prefix) const override
-    {
-    	string nextPrefix = prefix + this->m_PREFIX;
-    	cout << prefix << getTypeName() << this->m_DELIM << endl;
-    	if( initial )
-    		initial->print(nextPrefix);
-        if( condition )
-        	condition->print(nextPrefix);
-        if( increment )
-        	increment->print(nextPrefix);
-        block->print(nextPrefix);
-    }
+	virtual void print(string prefix) const override
+	{
+		string nextPrefix = prefix + this->m_PREFIX;
+		cout << prefix << getTypeName() << this->m_DELIM << endl;
+	    	if( initial )
+	    		initial->print(nextPrefix);
+		if( condition )
+			condition->print(nextPrefix);
+		if( increment )
+			increment->print(nextPrefix);
+		block->print(nextPrefix);
+	}
+	//生成中间代码
+	virtual llvm::Value *codeGen(CodeGenContext &context);
 
 };
 

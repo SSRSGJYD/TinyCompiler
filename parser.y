@@ -1,12 +1,11 @@
-%code requires
-{
+%{
 
 	#include "ast.h"
 	extern NBlock *g_root;//AST根节点
 	extern int yylex();
 	void yyerror(const char *);
 
-}
+%}
 
 //AST节点类型
 %union
@@ -171,8 +170,8 @@ SelectionStatement : T_IF Expression Block { $$ = new NIfStatement(shared_ptr<NE
 		}
 		;
 
-IterationStatement : T_FOR T_LPAREN Expression T_SEMI Expression T_SEMI Expression T_RPAREN Block { $$ = new NForStatement(shared_ptr<NBlock>($9), shared_ptr<NExpression>($3), shared_ptr<NExpression>($5), shared_ptr<NExpression>($7)); }
-		| T_WHILE T_LPAREN Expression T_RPAREN Block { $$ = new NForStatement(shared_ptr<NBlock>($5), nullptr, shared_ptr<NExpression>($3), nullptr); }
+IterationStatement : T_FOR T_LPAREN Expression T_SEMI Expression T_SEMI Expression T_RPAREN Block { $$ = new NIterationStatement(shared_ptr<NBlock>($9), shared_ptr<NExpression>($3), shared_ptr<NExpression>($5), shared_ptr<NExpression>($7)); }
+		| T_WHILE T_LPAREN Expression T_RPAREN Block { $$ = new NIterationStatement(shared_ptr<NBlock>($5), nullptr, shared_ptr<NExpression>($3), nullptr); }
 		;
 
 %%
