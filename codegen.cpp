@@ -196,6 +196,13 @@ Value* NConstant<float>::codeGen(CodeGenContext &context)
 	return ConstantFP::get(Type::getFloatTy(context.llvmContext), this->value);
 }
 
+template<>
+Value* NConstant<char>::codeGen(CodeGenContext &context)
+{
+	cout << "Generating Char Constant: " << this->value << endl;
+	return ConstantFP::get(Type::getInt8Ty(context.llvmContext), this->value);
+}
+
 //变量类代码生成
 Value* NIdentifier::codeGen(CodeGenContext &context)
 {
@@ -371,7 +378,7 @@ Value* NExpressionStatement::codeGen(CodeGenContext &context)
 //变量声明与定义类代码生成
 Value* NVariableDeclaration::codeGen(CodeGenContext &context)
 {
-	cout << "Generating variable declaration of " << this->type->name << " " << this->id->name << endl;
+	cout << "Generating variable declaration of " << this->type->name << " " << this->id->name << context.currentBlock() << endl;
 
 	Type* type = getVarType(this->type, context);
 	AllocaInst *alloca = new AllocaInst(type,0, this->id->name.c_str(), context.currentBlock());	

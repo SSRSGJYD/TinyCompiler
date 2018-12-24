@@ -30,3 +30,16 @@
 *.exe
 *.out
 *.app
+parser.hpp
+
+parser.cpp
+
+lexer.cpp
+
+*.ll
+
+*.bc
+
+parser
+
+compiler

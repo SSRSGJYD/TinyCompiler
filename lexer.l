@@ -57,6 +57,7 @@ ALL .
 
 [0-9]+[\.][0-9]*        SAVE_TOKEN; printf("T_FLOAT_CONST : %s\n",yytext); return T_FLOAT_CONST;
 [0-9]+                  SAVE_TOKEN; printf("T_INT_CONST : %s\n",yytext); return T_INT_CONST;
+\'(\\.|[^"])\'     		yylval.str = new string(&(yytext[1])); printf("T_CHAR_CONST : %c\n",yytext[1]); return T_CHAR_CONST;
 
 "=="					puts("T_CMP_EQ"); return TOKEN(T_CMP_EQ);
 "!="                    puts("T_CMP_NE"); return TOKEN(T_CMP_NE);

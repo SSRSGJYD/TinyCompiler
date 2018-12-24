@@ -20,13 +20,14 @@
 	int int_const;//整型常量
 	float float_const;//浮点型常量
 	string *str;//字符串
+	char c; //字符常量
 }
 
 /*-------------token---------------*/
 //变量类型与变量名：int float char void 变量名
 %token <str> T_INT T_FLOAT T_CHAR T_VOID T_IDENTIFIER
-//int常量与float常量
-%token <str> T_INT_CONST T_FLOAT_CONST
+//int常量与float常量 char常量
+%token <str> T_INT_CONST T_FLOAT_CONST T_CHAR_CONST
 //赋值符号与比较符号，依次为：= == >= > <= < !=
 %token <int_const> T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
 //各种标点符号，依次为：; , ( ) { } [ ] . ->
@@ -39,8 +40,8 @@
 /*-------------type---------------*/
 //变量标识符，依次为：变量 类型名
 %type <identifier> Identifier Typename
-//表达式，依次为：一般表达式 赋值表达式 数字表达式
-%type <expression> Expression AssignmentExpression NumberExpression
+//表达式，依次为：一般表达式 赋值表达式 数字表达式 字符表达式
+%type <expression> Expression AssignmentExpression NumberExpression CharExpression
 //运算式，依次为：一元运算式 二元运算式
 %type <expression> UnaryExpression BinaryExpression
 //函数声明的参数列表
@@ -97,6 +98,7 @@ Expression : AssignmentExpression { $$ = $1; }
 		 | NumberExpression
 		 | BinaryExpression
 		 | UnaryExpression
+		 | CharExpression
 		 | T_LPAREN Expression T_RPAREN { $$ = $2; }
 		 ;
 
@@ -105,6 +107,7 @@ AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shar
 NumberExpression : T_INT_CONST { $$ = new NConstant<int>(atol($1->c_str())); }
 		| T_FLOAT_CONST { $$ = new NConstant<float>(atof($1->c_str())); }
 		;
+CharExpression : T_CHAR_CONST { $$ = new NConstant<char>(*($1->c_str())); }
 
 /*-------------运算式---------------*/
 BinaryExpression : Expression T_CMP_EQ Expression { $$ = new NBinaryOperator(shared_ptr<NExpression>($1), $2, shared_ptr<NExpression>($3)); }
