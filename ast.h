@@ -109,6 +109,8 @@ class NIdentifier : public NExpression
 public:
 	string name;//变量名称
 	bool isType = false;//是否为类型名
+	bool isArray = false;
+	uint64_t arraySize = 0;
 	
 	NIdentifier(){}
 	NIdentifier(const std::string &name):name(name) {}
@@ -121,7 +123,11 @@ public:
 	virtual void print(string prefix) const override
 	{
 		string nextPrefix = prefix+this->m_PREFIX;
-		cout << prefix << getTypeName() << this->m_DELIM << name << endl;
+		if (isArray) {
+			cout << prefix << getTypeName() << this->m_DELIM << name << '[' << this->arraySize << ']' << endl;
+		} else {
+			cout << prefix << getTypeName() << this->m_DELIM << name << endl;
+		}
 	}
 	//生成中间代码
 	virtual llvm::Value *codeGen(CodeGenContext &context);
@@ -310,10 +316,11 @@ public:
 	shared_ptr<NExpression> assignmentExpr = nullptr;//赋值语句
 	
 	NVariableDeclaration(){}
-	NVariableDeclaration(const shared_ptr<NIdentifier> type, shared_ptr<NIdentifier> id, shared_ptr<NExpression> assignmentExpr = NULL):
-	type(type),id(id),assignmentExpr(assignmentExpr)
+	NVariableDeclaration(const shared_ptr<NIdentifier> type, shared_ptr<NIdentifier> id, shared_ptr<NExpression> assignmentExpr = NULL): \
+		type(type),id(id),assignmentExpr(assignmentExpr)
 	{
 		assert(type->isType);
+		assert(!id->isArray || (id->isArray && id->arraySize != 0));
 	}
 
 	//获取节点类型名
@@ -472,6 +479,95 @@ public:
 	}
 	//生成中间代码
 	virtual llvm::Value *codeGen(CodeGenContext &context);
+
+};
+
+// 数组用下标方式访问的类
+class NArrayIndex: public NExpression{
+public:
+    shared_ptr<NIdentifier>  arrayName;
+    shared_ptr<NExpression> expression;
+
+    NArrayIndex(){}
+
+    NArrayIndex(shared_ptr<NIdentifier>  name, shared_ptr<NExpression> expression)
+            : arrayName(name), expression(expression){
+    }
+
+    string getTypeName() const override{
+        return "NArrayIndex";
+    }
+
+    void print(string prefix) const override{
+        string nextPrefix = prefix + this->m_PREFIX;
+        cout << prefix << getTypeName() << this->m_DELIM << endl;
+
+        arrayName->print(nextPrefix);
+		expression->print(nextPrefix);
+    }
+    llvm::Value *codeGen(CodeGenContext &context) override ;
+
+};
+
+class NArrayAssignment: public NExpression{
+public:
+    shared_ptr<NArrayIndex> arrayIndex;
+    shared_ptr<NExpression>  expression;
+
+    NArrayAssignment(){}
+
+    NArrayAssignment(shared_ptr<NArrayIndex> index, shared_ptr<NExpression>  exp)
+            : arrayIndex(index), expression(exp){
+
+    }
+
+    string getTypeName() const override{
+        return "NArrayAssignment";
+    }
+
+    void print(string prefix) const override{
+
+        string nextPrefix = prefix + this->m_PREFIX;
+        cout << prefix << getTypeName() << this->m_DELIM << endl;
+
+        arrayIndex->print(nextPrefix);
+        expression->print(nextPrefix);
+    }
+
+    llvm::Value *codeGen(CodeGenContext &context) override ;
+
+};
+
+class NArrayInitialization: public NStatement{
+public:
+
+    NArrayInitialization(){}
+
+    shared_ptr<NVariableDeclaration> declaration;
+    shared_ptr<ExpressionList> list;
+
+    NArrayInitialization(shared_ptr<NVariableDeclaration> dec, shared_ptr<ExpressionList> list)
+            : declaration(dec), list(list){
+
+    }
+
+    string getTypeName() const override{
+        return "NArrayInitialization";
+    }
+
+    void print(string prefix) const override{
+
+        string nextPrefix = prefix + this->m_PREFIX;
+        cout << prefix << getTypeName() << this->m_DELIM << endl;
+
+        declaration->print(nextPrefix);
+		if (list) {
+			for(auto it=list->begin(); it!=list->end(); it++){
+				(*it)->print(nextPrefix);
+			}
+		}
+    }
+    llvm::Value *codeGen(CodeGenContext &context) override ;
 
 };
 

@@ -116,6 +116,18 @@ shared_ptr<NIdentifier> CodeGenContext::getSymbolType(string name) const
 	return nullptr;
 }
 
+uint64_t CodeGenContext::getArraySize(string name) const
+{
+	for(auto it=blockStack.rbegin(); it!=blockStack.rend(); it++)
+	{
+		if((*it)->arraySize.find(name) != (*it)->arraySize.end())
+		{
+			return (*it)->arraySize[name];
+		}
+	}
+	return 0;
+}
+
 void CodeGenContext::setSymbolValue(string name, Value* value)
 {
 	blockStack.back()->locals[name] = value;
@@ -124,6 +136,12 @@ void CodeGenContext::setSymbolValue(string name, Value* value)
 void CodeGenContext::setSymbolType(string name, shared_ptr<NIdentifier> value)
 {
 	blockStack.back()->types[name] = value;
+}
+
+void CodeGenContext::setArraySize(string name, uint64_t value)
+{
+	assert(value);
+	blockStack.back()->arraySize[name] = value;
 }
 
 BasicBlock* CodeGenContext::currentBlock() const
@@ -199,7 +217,7 @@ Value* NConstant<float>::codeGen(CodeGenContext &context)
 template<>
 Value* NConstant<char>::codeGen(CodeGenContext &context)
 {
-	cout << "Generating Char Constant: " << this->value << endl;
+	cout << "Generating Char Constant: '" << this->value << '\''<< endl;
 	return ConstantFP::get(Type::getInt8Ty(context.llvmContext), this->value);
 }
 
@@ -378,19 +396,30 @@ Value* NExpressionStatement::codeGen(CodeGenContext &context)
 //变量声明与定义类代码生成
 Value* NVariableDeclaration::codeGen(CodeGenContext &context)
 {
-	cout << "Generating variable declaration of " << this->type->name << " " << this->id->name << context.currentBlock() << endl;
+	cout << "Generating variable declaration of " << this->type->name << " " << this->id->name << (this->id->isArray ? " (Array)":" ") << endl;
 
 	Type* type = getVarType(this->type, context);
-	AllocaInst *alloca = new AllocaInst(type,0, this->id->name.c_str(), context.currentBlock());	
+
+	Value* inst = nullptr;
+	if( this->id->isArray ){
+		uint64_t arraySize = this->id->arraySize;
+        Value* arraySizeValue = (NConstant<int>(arraySize)).codeGen(context);
+        auto arrayType = ArrayType::get(getVarType(this->type, context), arraySize);
+        inst = context.builder.CreateAlloca(arrayType, arraySizeValue, "arraytmp");
+		context.setArraySize(this->id->name, arraySize);
+    }else{
+        inst = context.builder.CreateAlloca(type);
+    }
+
 	context.setSymbolType(this->id->name, this->type);
-	context.setSymbolValue(this->id->name, alloca);
+	context.setSymbolValue(this->id->name, inst);
 	
-	if( this->assignmentExpr != nullptr )//赋值
+	if( !this->id->isArray && this->assignmentExpr != nullptr )//赋值
 	{
 		NAssignment assignment(this->id, this->assignmentExpr);
 		assignment.codeGen(context);
 	}
-	return alloca;
+	return inst;
 }
 
 //函数定义类代码生成
@@ -550,5 +579,60 @@ Value* NIterationStatement::codeGen(CodeGenContext &context)
 	context.builder.SetInsertPoint(after);
 	
 	return nullptr;
+}
+
+// 数组索引
+Value *NArrayIndex::codeGen(CodeGenContext &context) {
+    cout << "Generating array index expression of " << this->arrayName->name << endl;
+    auto varPtr = context.getSymbolValue(this->arrayName->name);
+    uint64_t size = context.getArraySize(this->arrayName->name);
+
+    assert(size);
+	auto value = this->expression->codeGen(context);
+	
+    ArrayRef<Value*> index(value);
+    auto ptr = context.builder.CreateInBoundsGEP(varPtr, index, "elementPtr");
+
+    return context.builder.CreateAlignedLoad(ptr, 4);
+}
+
+// 数组赋值
+Value *NArrayAssignment::codeGen(CodeGenContext &context) {
+    cout << "Generating array index assignment of " << this->arrayIndex->arrayName->name << endl;
+    auto varPtr = context.getSymbolValue(this->arrayIndex->arrayName->name);
+
+    if( varPtr == nullptr ){
+        return LogError("Unknown variable name");
+    }
+    
+    auto arrayPtr = context.builder.CreateLoad(varPtr, "arrayPtr");
+
+    if( !arrayPtr->getType()->isArrayTy() && !arrayPtr->getType()->isPointerTy() ){
+        return LogError("The variable is not array");
+    }
+    auto index = this->arrayIndex->expression->codeGen(context);
+    ArrayRef<Value*> ref(index);
+    auto ptr = context.builder.CreateInBoundsGEP(varPtr, ref, "elementPtr");
+
+    return context.builder.CreateAlignedStore(this->expression->codeGen(context), ptr, 4);
+}
+
+// 数组初始化
+Value *NArrayInitialization::codeGen(CodeGenContext &context) {
+    cout << "Generating array initialization of " << this->declaration->id->name << endl;
+    auto arrayPtr = this->declaration->codeGen(context);
+	
+	assert(this->declaration->id->isArray);
+	
+	if (this->list) {
+		for(int index=0; index < this->list->size(); index++){
+			shared_ptr<NConstant<int>> indexValue = make_shared<NConstant<int>>(index);
+
+			shared_ptr<NArrayIndex> arrayIndex = make_shared<NArrayIndex>(this->declaration->id, indexValue);
+			NArrayAssignment assignment(arrayIndex, this->list->at(index));
+			assignment.codeGen(context);
+		}
+	}
+    return nullptr;
 }
 

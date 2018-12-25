@@ -5,8 +5,8 @@ OBJS = parser.o \
 	codegen.o \
 	main.o \
 
-LLVMCONFIG = /home/chengjialiang/llvm/bin/llvm-config
-CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -I/home/chengjialiang/llvm/include/
+LLVMCONFIG = /home/maoyutao/llvm/bin/llvm-config
+CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -I/home/maoyutao/llvm/include/
 LDFLAGS = `$(LLVMCONFIG) --ldflags` -lpthread -ldl -lz -rdynamic -L/usr/local/lib
 LIBS = `$(LLVMCONFIG) --libs`
 

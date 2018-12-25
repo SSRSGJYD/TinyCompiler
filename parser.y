@@ -12,6 +12,7 @@
 {
 	NBlock* block;//代码段
 	NExpression* expression;//表达式
+	NArrayIndex* index;//数组下标索引
 	NStatement* statement;//语句
 	NIdentifier* identifier;//变量与关键字标识符
 	NVariableDeclaration* var_decl;//变量定义
@@ -40,8 +41,10 @@
 /*-------------type---------------*/
 //变量标识符，依次为：变量 类型名
 %type <identifier> Identifier Typename
-//表达式，依次为：一般表达式 赋值表达式 数字表达式 字符表达式
-%type <expression> Expression AssignmentExpression NumberExpression CharExpression
+//表达式，依次为：一般表达式 赋值表达式 数字表达式 字符表达式 
+%type <expression> Expression AssignmentExpression NumberExpression CharExpression 
+// 数组索引
+%type <index> ArrayIndex
 //运算式，依次为：一元运算式 二元运算式
 %type <expression> UnaryExpression BinaryExpression
 //函数声明的参数列表
@@ -100,9 +103,12 @@ Expression : AssignmentExpression { $$ = $1; }
 		 | UnaryExpression
 		 | CharExpression
 		 | T_LPAREN Expression T_RPAREN { $$ = $2; }
+		 | ArrayIndex { $$ = $1; }
 		 ;
 
-AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); };
+AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); }
+		| ArrayIndex T_EQUAL Expression { $$ = new NArrayAssignment(shared_ptr<NArrayIndex>($1), shared_ptr<NExpression>($3));}
+		;
 
 NumberExpression : T_INT_CONST { $$ = new NConstant<int>(atol($1->c_str())); }
 		| T_FLOAT_CONST { $$ = new NConstant<float>(atof($1->c_str())); }
@@ -157,7 +163,18 @@ Statement : VarDeclaration T_SEMI
 
 VarDeclaration : Typename Identifier { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
 		| Typename Identifier T_EQUAL Expression { $$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<NExpression>($4)); }
+		| Typename Identifier T_LBRACKET T_INT_CONST T_RBRACKET {
+				$2->isArray = true; 
+				$2->arraySize = atol($4->c_str());
+				$$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
+		| Typename Identifier T_LBRACKET T_INT_CONST T_RBRACKET T_EQUAL T_LBRACE CallParameter T_RBRACE{
+				$2->isArray = true; 
+				$2->arraySize = atol($4->c_str());
+				$$ = new NArrayInitialization(make_shared<NVariableDeclaration>(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr), shared_ptr<ExpressionList>($8));}
 		;
+
+ArrayIndex : Identifier T_LBRACKET Expression T_RBRACKET 
+				{ $$ = new NArrayIndex(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); };
 
 FuncDeclaration : Typename Identifier T_LPAREN FuncParameter T_RPAREN Block { $$ = new NFunctionDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), shared_ptr<VariableList>($4), shared_ptr<NBlock>($6)); }
 		| T_EXTERN Typename Identifier T_LPAREN FuncParameter T_RPAREN T_SEMI { $$ = new NFunctionDeclaration(shared_ptr<NIdentifier>($2), shared_ptr<NIdentifier>($3), shared_ptr<VariableList>($5), nullptr, true); }

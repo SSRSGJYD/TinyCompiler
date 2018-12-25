@@ -39,7 +39,7 @@ public:
 	Value *returnValue;//llvm::Value对象指针，返回值
 	map<string,Value*> locals;//局部变量，变量名与数值对应表
 	map<string,shared_ptr<NIdentifier>> types;//局部变量，变量名与类型对应表
-	
+	std::map<string, uint64_t> arraySize; //数组的大小
 };
 
 //全局编译信息维护类
@@ -59,10 +59,14 @@ public:
 	Value* getSymbolValue(string name) const; 
 	//获取变量类型
 	shared_ptr<NIdentifier> getSymbolType(string name) const;
+	//获取数组大小
+	uint64_t getArraySize(string name) const;
 	//设置变量数据
 	void setSymbolValue(string name, Value* value);
 	//设置变量类型
 	void setSymbolType(string name, shared_ptr<NIdentifier> value);
+	//设置数组大小
+	void setArraySize(string name, uint64_t value);
 	//获取当前代码段
 	BasicBlock* currentBlock() const;
 	//压入代码段
