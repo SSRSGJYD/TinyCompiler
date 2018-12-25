@@ -51,7 +51,7 @@ Type *getVarType(shared_ptr<NIdentifier> type,CodeGenContext &context)
 	assert(type->isType);
 	if(!type->name.compare("int"))
 	{
-        	return Type::getInt32Ty(context.llvmContext);
+		return Type::getInt32Ty(context.llvmContext);
 	}
 	if(!type->name.compare("float"))
 	{
@@ -218,7 +218,7 @@ template<>
 Value* NConstant<char>::codeGen(CodeGenContext &context)
 {
 	cout << "Generating Char Constant: '" << this->value << '\''<< endl;
-	return ConstantFP::get(Type::getInt8Ty(context.llvmContext), this->value);
+	return ConstantInt::get(Type::getInt8Ty(context.llvmContext), this->value);
 }
 
 //变量类代码生成
