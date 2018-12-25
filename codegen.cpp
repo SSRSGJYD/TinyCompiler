@@ -590,8 +590,11 @@ Value *NArrayIndex::codeGen(CodeGenContext &context) {
     assert(size);
 	auto value = this->expression->codeGen(context);
 	
-    ArrayRef<Value*> index(value);
-    auto ptr = context.builder.CreateInBoundsGEP(varPtr, index, "elementPtr");
+	std::vector<Value*> indices;
+    indices.push_back(ConstantInt::get(Type::getInt32Ty(context.llvmContext), 0, false));
+    indices.push_back(value);
+
+    auto ptr = context.builder.CreateInBoundsGEP(varPtr, indices, "elementPtr");
 
     return context.builder.CreateAlignedLoad(ptr, 4);
 }
@@ -611,7 +614,7 @@ Value *NArrayAssignment::codeGen(CodeGenContext &context) {
         return LogError("The variable is not array");
     }
     auto index = this->arrayIndex->expression->codeGen(context);
-    ArrayRef<Value*> ref(index);
+    ArrayRef<Value*> ref{ConstantInt::get(Type::getInt32Ty(context.llvmContext), 0, false), index};
     auto ptr = context.builder.CreateInBoundsGEP(varPtr, ref, "elementPtr");
 
     return context.builder.CreateAlignedStore(this->expression->codeGen(context), ptr, 4);
