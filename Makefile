@@ -4,6 +4,7 @@ OBJS = parser.o \
 	lexer.o \
 	codegen.o \
 	main.o \
+	objgen.o \
 
 LLVMCONFIG = /home/maoyutao/llvm/bin/llvm-config
 CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -I/home/maoyutao/llvm/include/
@@ -11,6 +12,8 @@ LDFLAGS = `$(LLVMCONFIG) --ldflags` -lpthread -ldl -lz -rdynamic -L/usr/local/li
 LIBS = `$(LLVMCONFIG) --libs`
 
 codegen.cpp: codegen.h ast.h
+
+objgen.cpp: objgen.h
 
 parser.cpp : parser.y
 	bison -d -o $@ $<

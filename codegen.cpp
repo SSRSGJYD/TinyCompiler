@@ -65,6 +65,10 @@ Type *getVarType(shared_ptr<NIdentifier> type,CodeGenContext &context)
 	{
 		return Type::getVoidTy(context.llvmContext);
 	}
+	if(!type->name.compare("string"))
+	{
+		return Type::getInt8PtrTy(context.llvmContext);
+	}
 	return nullptr;
 }
 
@@ -639,3 +643,7 @@ Value *NArrayInitialization::codeGen(CodeGenContext &context) {
     return nullptr;
 }
 
+// 字符串字面量
+Value *NLiteral::codeGen(CodeGenContext &context) {
+    return context.builder.CreateGlobalString(this->value, "string");
+}

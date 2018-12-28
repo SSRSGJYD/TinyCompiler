@@ -1,6 +1,9 @@
+extern int printf(string str);
+extern int puts(string str);
+
 int main()
 {
-	char j = 'c';
-	char a[3]={'1'};
-	return a[0];
+	char a = 's';
+	printf("%c", a);
+	return 0;
 }

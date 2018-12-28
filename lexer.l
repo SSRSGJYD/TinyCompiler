@@ -45,6 +45,7 @@ ALL .
 "float"                 SAVE_TOKEN; puts("T_FLOAT"); return T_FLOAT;
 "char"                  SAVE_TOKEN; puts("T_CHAR"); return T_CHAR;
 "void"                  SAVE_TOKEN; puts("T_VOID"); return T_VOID;
+"string"                SAVE_TOKEN; puts("T_STRING"); return T_STRING;
 
 "if"                    puts("T_IF"); return TOKEN(T_IF);
 "else"                  puts("T_ELSE"); return TOKEN(T_ELSE);
@@ -58,7 +59,7 @@ ALL .
 [0-9]+[\.][0-9]*        SAVE_TOKEN; printf("T_FLOAT_CONST : %s\n",yytext); return T_FLOAT_CONST;
 [0-9]+                  SAVE_TOKEN; printf("T_INT_CONST : %s\n",yytext); return T_INT_CONST;
 \'(\\.|[^"])\'     		yylval.str = new string(&(yytext[1])); printf("T_CHAR_CONST : %c\n",yytext[1]); return T_CHAR_CONST;
-
+\"(\\.|[^"])*\"         SAVE_TOKEN; puts("T_LITERAL"); return T_LITERAL;
 "=="					puts("T_CMP_EQ"); return TOKEN(T_CMP_EQ);
 "!="                    puts("T_CMP_NE"); return TOKEN(T_CMP_NE);
 "<="                    puts("T_CMP_LE"); return TOKEN(T_CMP_LE);

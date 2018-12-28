@@ -544,7 +544,7 @@ public:
     NArrayInitialization(){}
 
     shared_ptr<NVariableDeclaration> declaration;
-    shared_ptr<ExpressionList> list;
+    shared_ptr<ExpressionList> list = make_shared<ExpressionList>();
 
     NArrayInitialization(shared_ptr<NVariableDeclaration> dec, shared_ptr<ExpressionList> list)
             : declaration(dec), list(list){
@@ -570,5 +570,30 @@ public:
     llvm::Value *codeGen(CodeGenContext &context) override ;
 
 };
+
+class NLiteral: public NExpression{
+public:
+    string value;
+
+    NLiteral(){}
+
+    NLiteral(const string &str) {
+        value = str.substr(1, str.length()-2);
+    }
+
+    string getTypeName() const override{
+        return "NLiteral";
+    }
+
+    void print(string prefix) const override{
+
+        cout << prefix << getTypeName() << this->m_DELIM << value << endl;
+
+    }
+
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
+};
+
 
 #endif

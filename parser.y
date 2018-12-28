@@ -26,9 +26,9 @@
 
 /*-------------token---------------*/
 //变量类型与变量名：int float char void 变量名
-%token <str> T_INT T_FLOAT T_CHAR T_VOID T_IDENTIFIER
-//int常量与float常量 char常量
-%token <str> T_INT_CONST T_FLOAT_CONST T_CHAR_CONST
+%token <str> T_INT T_FLOAT T_CHAR T_VOID T_IDENTIFIER T_STRING
+//int常量与float常量 char常量 字符串字面量 
+%token <str> T_INT_CONST T_FLOAT_CONST T_CHAR_CONST T_LITERAL
 //赋值符号与比较符号，依次为：= == >= > <= < !=
 %token <int_const> T_EQUAL T_CMP_EQ T_CMP_GE T_CMP_GT T_CMP_LE T_CMP_LT T_CMP_NE
 //各种标点符号，依次为：; , ( ) { } [ ] . ->
@@ -92,6 +92,7 @@ Typename : T_VOID { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
 		| T_INT { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
 		| T_FLOAT { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
 		| T_CHAR { $$ = new NIdentifier(*$1); $$->isType = true;  delete $1; }
+		| T_STRING { $$ = new NIdentifier(*$1); $$->isType = true; delete $1; }
 		;
    
 /*-------------表达式---------------*/
@@ -104,6 +105,7 @@ Expression : AssignmentExpression { $$ = $1; }
 		 | CharExpression
 		 | T_LPAREN Expression T_RPAREN { $$ = $2; }
 		 | ArrayIndex { $$ = $1; }
+		 | T_LITERAL { $$ = new NLiteral(*$1); delete $1; }
 		 ;
 
 AssignmentExpression : Identifier T_EQUAL Expression { $$ = new NAssignment(shared_ptr<NIdentifier>($1), shared_ptr<NExpression>($3)); }

@@ -1,6 +1,7 @@
 #include <iostream>
 #include "ast.h"
 #include "codegen.h"
+#include "objgen.h"
 
 using namespace std;
 
@@ -16,6 +17,9 @@ int main(int argc, char **argv)
 	//生成中间代码
 	CodeGenContext context;
 	context.generateCode(*g_root);
+
+	//生成.o文件
+	ObjGen(context);
 	
 	return 0;
 }
