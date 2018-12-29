@@ -43,3 +43,5 @@ lexer.cpp
 parser
 
 compiler
+
+test
