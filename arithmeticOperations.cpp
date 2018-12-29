@@ -63,7 +63,7 @@ int arithmeticOperation(char str[], int len) {
 			i = i + 1;
 			if (logicalOr(str[i] < '0', str[i] > '9'))
 			{
-                printf("push %d to RPNStack\r\n", tmp);
+                printf("push %d to RPNStack\n", tmp);
 				RPNStack[RPNStackTop] = tmp;
                 RPNStackTop = RPNStackTop + 1;
 				tmp = 0;
@@ -73,14 +73,14 @@ int arithmeticOperation(char str[], int len) {
 		{   
 			if (logicalOr(logicalOr(operationStackTop == 0, priority(operationStack[operationStackTop - 1]) < priority(str[i])), logicalAnd(str[i] != ')', operationStack[operationStackTop - 1] == '(')))
 			{
-                printf("push %c to operationStackTop\r\n", str[i]);
+                printf("push %c to operationStackTop\n", str[i]);
 				operationStack[operationStackTop] = str[i];
                 operationStackTop = operationStackTop + 1;
 				i = i + 1;
 			} else {
                 if (logicalAnd(operationStack[operationStackTop - 1] == '(', str[i] == ')'))
                 {
-                    printf("pop ( from operationStackTop\r\n");
+                    printf("pop ( from operationStackTop\n");
                     operationStackTop = operationStackTop - 1;
                     i = i + 1;
                 } else {
@@ -88,13 +88,13 @@ int arithmeticOperation(char str[], int len) {
                     {
                         tempOpt = operationStack[operationStackTop - 1];
                         operationStackTop = operationStackTop - 1;
-                        printf("pop %c from operationStackTop\r\n", tempOpt);
+                        printf("pop %c from operationStackTop\n", tempOpt);
                         rnum = RPNStack[RPNStackTop - 1];
                         RPNStackTop = RPNStackTop - 1;
-                        printf("pop %d from RPNStackTop\r\n", rnum);
+                        printf("pop %d from RPNStackTop\n", rnum);
                         lnum = RPNStack[RPNStackTop - 1];
                         RPNStackTop = RPNStackTop - 1;
-                        printf("pop %d from RPNStackTop\r\n", rnum);
+                        printf("pop %d from RPNStackTop\n", rnum);
                         if (tempOpt == '+'){
                             RPNStack[RPNStackTop] = lnum + rnum;
                         } else if (tempOpt == '-') {
@@ -104,10 +104,10 @@ int arithmeticOperation(char str[], int len) {
                         } else if (tempOpt == '/') {
                             RPNStack[RPNStackTop] = lnum / rnum;
                         } else {
-                            printf("ERROR: unkown operation!\r\n");
+                            printf("ERROR: unkown operation!\n");
                         }     
                         RPNStackTop = RPNStackTop + 1;  
-                        printf("push %d to RPNStackTop\r\n", RPNStack[RPNStackTop - 1]);       
+                        printf("push %d to RPNStackTop\n", RPNStack[RPNStackTop - 1]);       
                     }
                 }
             }
@@ -121,6 +121,6 @@ int main(){
     printf("【四则运算】请输入50字节以内的字符串：");
     scanf("%s", str);
     int len = strlen(str);
-    printf("answer:%d\r\n", arithmeticOperation(str, len));
+    printf("answer:%d\n", arithmeticOperation(str, len));
     return 0;
 }

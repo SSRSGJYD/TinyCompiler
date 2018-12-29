@@ -19,8 +19,8 @@ int palindrome(char str[],int len){
 } 
 
 int main(){
-	char str[128];
-    printf("【回文检测】请输入128字节以内的字符串：");
+	char str[40];
+    printf("【回文检测】请输入40字节以内的字符串：");
     scanf("%s", str);
     int len = strlen(str);
     palindrome(str, len);

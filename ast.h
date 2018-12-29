@@ -582,6 +582,11 @@ public:
 
     NLiteral(const string &str) {
         value = str.substr(1, str.length()-2);
+		for (int i = 0; i < value.length()-1; i++) {
+			if (value[i] == '\\' && value[i + 1] == 'n') {
+				value.replace(i, 2, "\n");
+			}
+		}
     }
 
     string getTypeName() const override{
