@@ -6,8 +6,9 @@ OBJS = parser.o \
 	main.o \
 	objgen.o \
 
-LLVMCONFIG = /home/maoyutao/llvm/bin/llvm-config
-CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -I/home/maoyutao/llvm/include/
+LLVMCONFIG = /llvm-source-code/clang+llvm-6.0.1-x86_64-linux-gnu-ubuntu-16.04/bin/llvm-config
+CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -I/llvm-source-code/clang+llvm-6.0.1-x86_64-linux-gnu-ubuntu-16.04/include/
+
 LDFLAGS = `$(LLVMCONFIG) --ldflags` -lpthread -ldl -lz -rdynamic -L/usr/local/lib
 LIBS = `$(LLVMCONFIG) --libs`
 
