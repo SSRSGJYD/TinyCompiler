@@ -202,6 +202,22 @@ void CodeGenContext::generateCode(NBlock& root)
 	passManager.run(*(this->module.get()));
 	return;
 }
+
+bool CodeGenContext::isFuncArg(string name) const{
+
+	for(auto it=blockStack.rbegin(); it!=blockStack.rend(); it++){
+		if( (*it)->isFuncArg.find(name) != (*it)->isFuncArg.end() ){
+			return (*it)->isFuncArg[name];
+		}
+	}
+	return false;
+}
+
+void CodeGenContext::setFuncArg(string name, bool value){
+	cout << "Set " << name << " as func arg" << endl;
+	blockStack.back()->isFuncArg[name] = value;
+}
+
 /*-------------各节点类的codeGen()函数实现-------------*/
 //常量类代码生成
 template<>
@@ -235,10 +251,23 @@ Value* NIdentifier::codeGen(CodeGenContext &context)
 	{
 		return LogError("Unknown variable name " + this->name);
 	}
+	if( value->getType()->isPointerTy() ){
+        auto arrayPtr = context.builder.CreateLoad(value, "arrayPtr");
+        if( arrayPtr->getType()->isArrayTy() ){
+            cout << "(Array Type)" << endl;
+            std::vector<Value*> indices;
+            indices.push_back(ConstantInt::get(Type::getInt64Ty(context.llvmContext), 0));
+            auto ptr = context.builder.CreateInBoundsGEP(value, indices, "arrayPtr");
+            return ptr;
+        }
+    }
 	return context.builder.CreateLoad(value, false, "");
 
 }
-
+bool NIdentifier::isArrayType(CodeGenContext &context)
+{
+	return isArray || (context.getArraySize(name) != 0);
+}
 //函数调用类代码生成
 Value* NFunctionCall::codeGen(CodeGenContext &context)
 {
@@ -407,9 +436,13 @@ Value* NVariableDeclaration::codeGen(CodeGenContext &context)
 	Value* inst = nullptr;
 	if( this->id->isArray ){
 		uint64_t arraySize = this->id->arraySize;
-        Value* arraySizeValue = (NConstant<int>(arraySize)).codeGen(context);
-        auto arrayType = ArrayType::get(getVarType(this->type, context), arraySize);
-        inst = context.builder.CreateAlloca(arrayType, arraySizeValue, "arraytmp");
+		if (this->isFuncArg) {
+			inst = context.builder.CreateAlloca(PointerType::get(type, 0));
+		} else {
+			Value* arraySizeValue = (NConstant<int>(arraySize)).codeGen(context);
+			auto arrayType = ArrayType::get(type, arraySize);
+			inst = context.builder.CreateAlloca(arrayType, arraySizeValue, "arraytmp");
+		}
 		context.setArraySize(this->id->name, arraySize);
     }else{
         inst = context.builder.CreateAlloca(type);
@@ -418,7 +451,7 @@ Value* NVariableDeclaration::codeGen(CodeGenContext &context)
 	context.setSymbolType(this->id->name, this->type);
 	context.setSymbolValue(this->id->name, inst);
 	
-	if( !this->id->isArray && this->assignmentExpr != nullptr )//赋值
+	if(!this->id->isArray && this->assignmentExpr != nullptr )//赋值
 	{
 		NAssignment assignment(this->id, this->assignmentExpr);
 		assignment.codeGen(context);
@@ -434,9 +467,17 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext &context)
 	
 	for(auto &arg: *this->arguments)
 	{
-		argTypes.push_back(getVarType(arg->type, context));
+		if( arg->id->isArrayType(context) ){
+            argTypes.push_back(PointerType::get(getVarType(arg->type, context), 0));
+        } else{
+            argTypes.push_back(getVarType(arg->type, context));
+        }
 	}
-	Type* retType = getVarType(this->type, context);
+	Type* retType = nullptr;
+	if( this->id->isArrayType(context) )
+        retType = PointerType::get(getVarType(this->type, context), 0);
+    else
+        retType = getVarType(this->type, context);
 	
 	FunctionType* functionType = FunctionType::get(retType, argTypes, false);
 	Function* function = Function::Create(functionType, GlobalValue::ExternalLinkage, this->id->name.c_str(), context.module.get());
@@ -455,11 +496,13 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext &context)
 		{
 			arg.setName((*origin_arg)->id->name);
 			Value* argAlloc;
+			(*origin_arg)->isFuncArg = true;
 			argAlloc = (*origin_arg)->codeGen(context);
 			
 			context.builder.CreateStore(&arg, argAlloc, false);
 			context.setSymbolValue((*origin_arg)->id->name, argAlloc);
 			context.setSymbolType((*origin_arg)->id->name, (*origin_arg)->type);
+			context.setFuncArg((*origin_arg)->id->name, true);
 			origin_arg++;
 		}
 		
@@ -589,15 +632,20 @@ Value* NIterationStatement::codeGen(CodeGenContext &context)
 Value *NArrayIndex::codeGen(CodeGenContext &context) {
     cout << "Generating array index expression of " << this->arrayName->name << endl;
     auto varPtr = context.getSymbolValue(this->arrayName->name);
-    uint64_t size = context.getArraySize(this->arrayName->name);
 
-    assert(size);
+    assert(this->arrayName->isArrayType(context));
 	auto value = this->expression->codeGen(context);
-	
 	std::vector<Value*> indices;
-    indices.push_back(ConstantInt::get(Type::getInt32Ty(context.llvmContext), 0, false));
-    indices.push_back(value);
-
+	if(context.isFuncArg(this->arrayName->name) ){
+        cout << "isFuncArg" << endl;
+        varPtr = context.builder.CreateLoad(varPtr, "actualArrayPtr");
+        indices = { value };
+    }else if( varPtr->getType()->isPointerTy() ){
+        cout << this->arrayName->name << "Not isFuncArg" << endl;
+        indices = { ConstantInt::get(Type::getInt64Ty(context.llvmContext), 0), value };
+    }else{
+        return LogError("The variable is not array");
+    }
     auto ptr = context.builder.CreateInBoundsGEP(varPtr, indices, "elementPtr");
 
     return context.builder.CreateAlignedLoad(ptr, 4);

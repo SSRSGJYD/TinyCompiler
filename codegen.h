@@ -39,7 +39,8 @@ public:
 	Value *returnValue;//llvm::Value对象指针，返回值
 	map<string,Value*> locals;//局部变量，变量名与数值对应表
 	map<string,shared_ptr<NIdentifier>> types;//局部变量，变量名与类型对应表
-	std::map<string, uint64_t> arraySize; //数组的大小
+	map<string, uint64_t> arraySize; //数组的大小
+	map<string, bool> isFuncArg; // 是否是函数形参
 };
 
 //全局编译信息维护类
@@ -77,7 +78,10 @@ public:
 	void setReturnValue(Value* value);
 	//获取当前代码段返回值
 	Value* getReturnValue();
-  
+	//是否是函数形参
+	bool isFuncArg(string name) const; 
+	//设置函数形参
+	void setFuncArg(string name, bool value);
 	//生成代码
 	void generateCode(NBlock&);
 };

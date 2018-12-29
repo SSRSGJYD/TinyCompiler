@@ -109,11 +109,13 @@ class NIdentifier : public NExpression
 public:
 	string name;//变量名称
 	bool isType = false;//是否为类型名
-	bool isArray = false;
+	bool isArray = false;//是否是数组 只用来传递
 	uint64_t arraySize = 0;
 	
 	NIdentifier(){}
 	NIdentifier(const std::string &name):name(name) {}
+
+	bool isArrayType(CodeGenContext &context);
 	//获取节点类型名
 	virtual string getTypeName() const override
 	{
@@ -313,6 +315,7 @@ class NVariableDeclaration : public NStatement
 public:
 	const shared_ptr<NIdentifier> type;//变量类型
 	shared_ptr<NIdentifier> id;//变量名
+	bool isFuncArg = false;//是否是形参
 	shared_ptr<NExpression> assignmentExpr = nullptr;//赋值语句
 	
 	NVariableDeclaration(){}
