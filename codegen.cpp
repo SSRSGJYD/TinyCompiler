@@ -439,6 +439,7 @@ Value* NVariableDeclaration::codeGen(CodeGenContext &context)
 		if (this->isFuncArg) {
 			inst = context.builder.CreateAlloca(PointerType::get(type, 0));
 		} else {
+			assert(arraySize > 0);
 			Value* arraySizeValue = (NConstant<int>(arraySize)).codeGen(context);
 			auto arrayType = ArrayType::get(type, arraySize);
 			inst = context.builder.CreateAlloca(arrayType, arraySizeValue, "arraytmp");

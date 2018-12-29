@@ -173,6 +173,10 @@ VarDeclaration : Typename Identifier { $$ = new NVariableDeclaration(shared_ptr<
 				$2->isArray = true; 
 				$2->arraySize = atol($4->c_str());
 				$$ = new NArrayInitialization(make_shared<NVariableDeclaration>(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr), shared_ptr<ExpressionList>($8));}
+		| Typename Identifier T_LBRACKET T_RBRACKET {
+				$2->isArray = true; 
+				$2->arraySize = -1;
+				$$ = new NVariableDeclaration(shared_ptr<NIdentifier>($1), shared_ptr<NIdentifier>($2), nullptr); }
 		;
 
 ArrayIndex : Identifier T_LBRACKET Expression T_RBRACKET 

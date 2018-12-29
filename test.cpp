@@ -1,6 +1,8 @@
 extern int printf(string format);
 extern int puts(string s);
 
+
+
 int func(int a, int b[3]){
 	printf("%d", b[a]);
     return 0;
