@@ -642,7 +642,7 @@ Value *NArrayIndex::codeGen(CodeGenContext &context) {
         varPtr = context.builder.CreateLoad(varPtr, "actualArrayPtr");
         indices = { value };
     }else if( varPtr->getType()->isPointerTy() ){
-        cout << this->arrayName->name << "Not isFuncArg" << endl;
+        cout << this->arrayName->name << "is not FuncArg" << endl;
         indices = { ConstantInt::get(Type::getInt64Ty(context.llvmContext), 0), value };
     }else{
         return LogError("The variable is not array");
